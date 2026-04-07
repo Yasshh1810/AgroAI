@@ -153,7 +153,14 @@ async function doSignup() {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ username, email, password }),
     });
-    const data = await res.json();
+let data;
+try {
+  data = await res.json();
+} catch (e) {
+  const text = await res.text();
+  console.error("SERVER ERROR:", text);
+  throw new Error("Server returned invalid response");
+}
     if (!res.ok) throw new Error(data.detail || 'Signup failed.');
     showAlert(okBox, 'Account created! Redirecting to login...');
     setTimeout(() => { clearSignupForm(); goPage('login'); }, 1500);
