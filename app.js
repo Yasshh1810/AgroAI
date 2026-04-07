@@ -1,8 +1,89 @@
 // ========== USER DATABASE (localStorage) ==========
 let users = JSON.parse(localStorage.getItem('agroai_users')) || [];
 
+// Pre-load demo user if no users exist
+if (users.length === 0) {
+    users.push({
+        username: "demo",
+        email: "demo@agroai.com",
+        password: "demo123",
+        history: []
+    });
+    saveUsers();
+}
+
 function saveUsers() {
     localStorage.setItem('agroai_users', JSON.stringify(users));
+}
+
+// ========== DISEASE DATABASE ==========
+const diseaseData = {
+    'Bacterial Spot': { 
+        severity: 'Medium', 
+        treatment: 'Apply copper-based bactericide. Remove infected leaves. Avoid overhead watering.',
+        prevention: 'Use disease-free seeds, rotate crops every 2 years.'
+    },
+    'Early Blight': { 
+        severity: 'High', 
+        treatment: 'Apply fungicides containing chlorothalonil or mancozeb. Remove lower leaves.',
+        prevention: 'Mulch around plants, water at base, stake plants for airflow.'
+    },
+    'Late Blight': { 
+        severity: 'Critical', 
+        treatment: 'Apply metalaxyl or mancozeb immediately. Destroy severely infected plants.',
+        prevention: 'Use resistant varieties, avoid overhead irrigation.'
+    },
+    'Leaf Mold': { 
+        severity: 'Medium', 
+        treatment: 'Reduce humidity. Apply fungicide with chlorothalonil or copper.',
+        prevention: 'Improve air circulation, water early morning.'
+    },
+    'Septoria Leaf Spot': { 
+        severity: 'Medium', 
+        treatment: 'Remove affected leaves. Apply copper fungicide.',
+        prevention: 'Rotate crops, avoid wetting foliage.'
+    },
+    'Spider Mites': { 
+        severity: 'Low', 
+        treatment: 'Use insecticidal soap or neem oil. Increase humidity.',
+        prevention: 'Regular inspection, maintain plant health.'
+    },
+    'Target Spot': { 
+        severity: 'Medium', 
+        treatment: 'Apply fungicide. Avoid overhead watering.',
+        prevention: 'Proper spacing, remove crop debris.'
+    },
+    'Yellow Leaf Curl Virus': { 
+        severity: 'High', 
+        treatment: 'Remove infected plants immediately. Control whitefly population.',
+        prevention: 'Use reflective mulches, insect nets.'
+    },
+    'Mosaic Virus': { 
+        severity: 'High', 
+        treatment: 'No cure. Remove and destroy infected plants immediately.',
+        prevention: 'Use virus-free seeds, control aphids.'
+    },
+    'Healthy': { 
+        severity: 'None', 
+        treatment: 'Continue regular care and monitoring. No action needed.',
+        prevention: 'Maintain good agricultural practices.'
+    }
+};
+
+// ========== DETECTION HISTORY ==========
+let detectionHistory = JSON.parse(localStorage.getItem('agroai_history')) || [];
+
+function saveHistory() {
+    localStorage.setItem('agroai_history', JSON.stringify(detectionHistory));
+    // Also save to current user if logged in
+    const currentUser = JSON.parse(localStorage.getItem('agroai_current_user'));
+    if (currentUser) {
+        const userIndex = users.findIndex(u => u.username === currentUser.username);
+        if (userIndex !== -1) {
+            users[userIndex].history = detectionHistory;
+            saveUsers();
+        }
+    }
 }
 
 // ========== PAGE NAVIGATION ==========
@@ -36,8 +117,12 @@ function goPage(pageId) {
         }
     }
     
-    // Refresh history if on results page
+    // Refresh data on specific pages
     if (pageId === 'results') refreshHistoryDisplay();
+    if (pageId === 'home') populateDiseaseTable();
+    
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // ========== LOGIN ==========
@@ -59,7 +144,15 @@ function doLogin() {
     const user = users.find(u => u.username === username && u.password === password);
     
     if (user) {
-        localStorage.setItem('agroai_current_user', JSON.stringify({ username: user.username, email: user.email }));
+        // Load user's history
+        detectionHistory = user.history || [];
+        saveHistory();
+        
+        localStorage.setItem('agroai_current_user', JSON.stringify({ 
+            username: user.username, 
+            email: user.email 
+        }));
+        
         successDiv.textContent = 'Login successful! Redirecting...';
         successDiv.style.display = 'block';
         
@@ -140,6 +233,7 @@ function doSignup() {
 // ========== LOGOUT ==========
 function logout() {
     localStorage.removeItem('agroai_current_user');
+    detectionHistory = [];
     document.getElementById('tb-guest').style.display = 'flex';
     document.getElementById('tb-user').style.display = 'none';
     goPage('landing');
@@ -150,6 +244,9 @@ function doForgot() {
     const email = document.getElementById('forgot-email').value.trim();
     const errorDiv = document.getElementById('forgot-error');
     const successDiv = document.getElementById('forgot-success');
+    const newPwGroup = document.getElementById('new-pw-group');
+    const confirmPwGroup = document.getElementById('confirm-pw-group');
+    const forgotBtn = document.getElementById('forgot-btn');
     
     errorDiv.style.display = 'none';
     successDiv.style.display = 'none';
@@ -162,49 +259,83 @@ function doForgot() {
         return;
     }
     
-    // Simple reset: just show the password (in real app, send email)
-    successDiv.innerHTML = `Your account password is: <strong>${user.password}</strong><br>Please login and change it.`;
-    successDiv.style.display = 'block';
-}
-
-// ========== NAVIGATION HELPERS ==========
-function navToLogin() { goPage('login'); }
-function navToSignup() { goPage('signup'); }
-
-// ========== CHECK LOGIN STATE ON LOAD ==========
-function checkLoginState() {
-    const currentUser = JSON.parse(localStorage.getItem('agroai_current_user'));
-    if (currentUser) {
-        document.getElementById('tb-guest').style.display = 'none';
-        document.getElementById('tb-user').style.display = 'flex';
-        document.getElementById('tb-username-label').textContent = currentUser.username;
+    // Check if we're in reset mode or verify mode
+    if (forgotBtn.textContent === 'Verify Email') {
+        // Show password reset fields
+        newPwGroup.style.display = 'block';
+        confirmPwGroup.style.display = 'block';
+        forgotBtn.textContent = 'Reset Password';
+        successDiv.innerHTML = `Email verified! Please enter your new password.`;
+        successDiv.style.display = 'block';
     } else {
-        document.getElementById('tb-guest').style.display = 'flex';
-        document.getElementById('tb-user').style.display = 'none';
+        // Reset password
+        const newPassword = document.getElementById('forgot-newpw').value;
+        const confirmPassword = document.getElementById('forgot-confirmpw').value;
+        
+        if (!newPassword || !confirmPassword) {
+            errorDiv.textContent = 'Please enter new password';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        
+        if (newPassword !== confirmPassword) {
+            errorDiv.textContent = 'Passwords do not match';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        
+        if (newPassword.length < 6) {
+            errorDiv.textContent = 'Password must be at least 6 characters';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        
+        user.password = newPassword;
+        saveUsers();
+        
+        successDiv.innerHTML = 'Password reset successful! Please login with your new password.';
+        successDiv.style.display = 'block';
+        
+        // Reset form
+        document.getElementById('forgot-email').value = '';
+        document.getElementById('forgot-newpw').value = '';
+        document.getElementById('forgot-confirmpw').value = '';
+        newPwGroup.style.display = 'none';
+        confirmPwGroup.style.display = 'none';
+        forgotBtn.textContent = 'Verify Email';
+        
+        setTimeout(() => {
+            goPage('login');
+        }, 2000);
     }
 }
 
-// ========== DISEASE DATABASE ==========
-const diseaseData = {
-    'Bacterial Spot': { severity: 'Moderate', treatment: 'Apply copper-based bactericide. Remove infected leaves.' },
-    'Early Blight': { severity: 'High', treatment: 'Use fungicides containing chlorothalonil. Improve air circulation.' },
-    'Late Blight': { severity: 'Critical', treatment: 'Apply metalaxyl or mancozeb. Destroy severely infected plants.' },
-    'Leaf Mold': { severity: 'Moderate', treatment: 'Reduce humidity. Apply fungicide with chlorothalonil.' },
-    'Septoria Leaf Spot': { severity: 'Moderate', treatment: 'Remove affected leaves. Apply copper fungicide.' },
-    'Spider Mites': { severity: 'Low', treatment: 'Use insecticidal soap or neem oil. Increase humidity.' },
-    'Target Spot': { severity: 'Moderate', treatment: 'Apply fungicide. Avoid overhead watering.' },
-    'Yellow Leaf Curl Virus': { severity: 'High', treatment: 'Remove infected plants. Control whitefly population.' },
-    'Mosaic Virus': { severity: 'High', treatment: 'No cure. Remove and destroy infected plants.' },
-    'Healthy': { severity: 'None', treatment: 'Continue regular care and monitoring.' }
-};
-
-// ========== DETECTION SIMULATION ==========
-let detectionHistory = JSON.parse(localStorage.getItem('agroai_history')) || [];
-
-function saveHistory() {
-    localStorage.setItem('agroai_history', JSON.stringify(detectionHistory));
+// ========== POPULATE DISEASE TABLE ==========
+function populateDiseaseTable() {
+    const tableContainer = document.getElementById('disease-table');
+    if (!tableContainer) return;
+    
+    const diseases = Object.keys(diseaseData);
+    tableContainer.innerHTML = diseases.map(disease => `
+        <div class="drow">
+            <div class="drow-name">${disease}</div>
+            <span class="badge ${getSeverityClass(diseaseData[disease].severity)}">${diseaseData[disease].severity || 'Unknown'}</span>
+        </div>
+    `).join('');
 }
 
+function getSeverityClass(severity) {
+    const map = {
+        'None': 'badge-none',
+        'Low': 'badge-low',
+        'Medium': 'badge-medium',
+        'High': 'badge-high',
+        'Critical': 'badge-critical'
+    };
+    return map[severity] || 'badge-medium';
+}
+
+// ========== REFRESH HISTORY DISPLAY ==========
 function refreshHistoryDisplay() {
     const tbody = document.getElementById('history-body');
     const totalSpan = document.getElementById('m-total');
@@ -244,21 +375,24 @@ function clearHistory() {
         detectionHistory = [];
         saveHistory();
         refreshHistoryDisplay();
+        showToast('History cleared', 'success');
     }
 }
 
-// Simulate detection (since no real backend)
+// ========== SIMULATE DISEASE DETECTION ==========
 function simulateDetection(imageFile) {
-    const diseases = ['Bacterial Spot', 'Early Blight', 'Late Blight', 'Leaf Mold', 'Septoria Leaf Spot', 'Spider Mites', 'Target Spot', 'Yellow Leaf Curl Virus', 'Mosaic Virus', 'Healthy'];
-    const randomDisease = diseases[Math.floor(Math.random() * diseases.length)];
-    const confidence = (85 + Math.random() * 14).toFixed(1);
+    const diseases = Object.keys(diseaseData);
+    const randomIndex = Math.floor(Math.random() * diseases.length);
+    const randomDisease = diseases[randomIndex];
+    const confidence = (75 + Math.random() * 24).toFixed(1);
     
     const result = {
         disease: randomDisease,
         confidence: parseFloat(confidence),
         timestamp: new Date().toLocaleString(),
-        severity: diseaseData[randomDisease]?.severity || 'Moderate',
-        treatment: diseaseData[randomDisease]?.treatment || 'Consult local expert.'
+        severity: diseaseData[randomDisease]?.severity || 'Medium',
+        treatment: diseaseData[randomDisease]?.treatment || 'Consult local expert.',
+        prevention: diseaseData[randomDisease]?.prevention || 'Regular monitoring recommended.'
     };
     
     detectionHistory.push(result);
@@ -267,7 +401,101 @@ function simulateDetection(imageFile) {
     return result;
 }
 
-// ========== EXPOSE FOR GLOBAL USE ==========
+// ========== SHOW TOAST NOTIFICATION ==========
+function showToast(message, type = 'info') {
+    let toast = document.querySelector('.toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.className = 'toast';
+        document.body.appendChild(toast);
+    }
+    
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    toast.style.display = 'block';
+    
+    setTimeout(() => {
+        toast.style.display = 'none';
+    }, 3000);
+}
+
+// ========== INITIALIZE CHART ==========
+function initModelChart() {
+    const ctx = document.getElementById('model-chart');
+    if (!ctx) return;
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['YOLOv8', 'SVM', 'Random Forest', 'Decision Tree'],
+            datasets: [{
+                label: 'Accuracy (%)',
+                data: [96.7, 83.1, 78.4, 71.2],
+                backgroundColor: ['#2166c4', '#64748b', '#94a3b8', '#cbd5e1'],
+                borderRadius: 8,
+                barPercentage: 0.65
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { position: 'top', labels: { font: { size: 11 } } },
+                tooltip: { callbacks: { label: (ctx) => `${ctx.raw}%` } }
+            },
+            scales: {
+                y: { 
+                    beginAtZero: true, 
+                    max: 100,
+                    title: { display: true, text: 'Accuracy (%)', font: { size: 11 } }
+                }
+            }
+        }
+    });
+}
+
+// ========== NAVIGATION HELPERS ==========
+function navToLogin() { goPage('login'); }
+function navToSignup() { goPage('signup'); }
+
+// ========== CHECK LOGIN STATE ON LOAD ==========
+function checkLoginState() {
+    const currentUser = JSON.parse(localStorage.getItem('agroai_current_user'));
+    if (currentUser) {
+        // Load user's history
+        const user = users.find(u => u.username === currentUser.username);
+        if (user && user.history) {
+            detectionHistory = user.history;
+        }
+        document.getElementById('tb-guest').style.display = 'none';
+        document.getElementById('tb-user').style.display = 'flex';
+        document.getElementById('tb-username-label').textContent = currentUser.username;
+    } else {
+        document.getElementById('tb-guest').style.display = 'flex';
+        document.getElementById('tb-user').style.display = 'none';
+    }
+}
+
+// ========== CLEAR IMAGE ==========
+window.clearImage = function() {
+    const fileInput = document.getElementById('file-input');
+    const previewImg = document.getElementById('preview-img');
+    const uploadPlaceholder = document.getElementById('upload-placeholder');
+    const clearBtn = document.getElementById('clear-btn');
+    const resultPlaceholder = document.getElementById('result-placeholder');
+    const resultOutput = document.getElementById('result-output');
+    const loadingBox = document.getElementById('loading-box');
+    
+    if (fileInput) fileInput.value = '';
+    if (previewImg) previewImg.classList.add('hidden');
+    if (uploadPlaceholder) uploadPlaceholder.style.display = 'flex';
+    if (clearBtn) clearBtn.style.display = 'none';
+    if (resultPlaceholder) resultPlaceholder.style.display = 'flex';
+    if (resultOutput) resultOutput.classList.add('hidden');
+    if (loadingBox) loadingBox.classList.add('hidden');
+};
+
+// ========== EXPOSE FUNCTIONS GLOBALLY ==========
 window.goPage = goPage;
 window.doLogin = doLogin;
 window.doSignup = doSignup;
@@ -276,11 +504,26 @@ window.doForgot = doForgot;
 window.navToLogin = navToLogin;
 window.navToSignup = navToSignup;
 window.clearHistory = clearHistory;
+window.togglePw = function(inputId, btn) {
+    var inp = document.getElementById(inputId);
+    var isHidden = inp.type === 'password';
+    inp.type = isHidden ? 'text' : 'password';
+    if (btn) {
+        var openEye = btn.querySelector('.eye-open');
+        var offEye = btn.querySelector('.eye-off');
+        if (openEye && offEye) {
+            openEye.style.display = isHidden ? 'none' : '';
+            offEye.style.display = isHidden ? '' : 'none';
+        }
+    }
+};
 
-// Initialize on load
+// ========== DOM CONTENT LOADED ==========
 document.addEventListener('DOMContentLoaded', () => {
     checkLoginState();
     goPage('landing');
+    populateDiseaseTable();
+    initModelChart();
     
     // Set up file upload for detection
     const fileInput = document.getElementById('file-input');
@@ -298,30 +541,43 @@ document.addEventListener('DOMContentLoaded', () => {
             if (file) {
                 const reader = new FileReader();
                 reader.onload = (event) => {
-                    previewImg.src = event.target.result;
-                    previewImg.classList.remove('hidden');
-                    uploadPlaceholder.style.display = 'none';
+                    if (previewImg) {
+                        previewImg.src = event.target.result;
+                        previewImg.classList.remove('hidden');
+                    }
+                    if (uploadPlaceholder) uploadPlaceholder.style.display = 'none';
                     if (clearBtn) clearBtn.style.display = 'inline-block';
                     
                     // Simulate detection
-                    resultPlaceholder.style.display = 'none';
-                    loadingBox.classList.remove('hidden');
-                    resultOutput.classList.add('hidden');
+                    if (resultPlaceholder) resultPlaceholder.style.display = 'none';
+                    if (loadingBox) loadingBox.classList.remove('hidden');
+                    if (resultOutput) resultOutput.classList.add('hidden');
                     
                     setTimeout(() => {
                         const result = simulateDetection(file);
-                        loadingBox.classList.add('hidden');
-                        resultOutput.classList.remove('hidden');
-                        resultOutput.innerHTML = `
-                            <div style="text-align:center">
-                                <div class="detection-disease">${result.disease}</div>
-                                <div class="detection-conf">Confidence: ${result.confidence}%</div>
-                                <div class="detection-severity">Severity: ${result.severity}</div>
-                                <div class="detection-treatment">${result.treatment}</div>
-                                <button class="btn-primary mt-12" onclick="goPage('results')">View History</button>
-                            </div>
-                        `;
+                        if (loadingBox) loadingBox.classList.add('hidden');
+                        if (resultOutput) {
+                            resultOutput.classList.remove('hidden');
+                            resultOutput.innerHTML = `
+                                <div style="text-align:center">
+                                    <div style="font-size:22px;font-weight:700;color:var(--slate900);margin-bottom:8px">${result.disease}</div>
+                                    <div style="margin-bottom:12px"><span class="badge ${getSeverityClass(result.severity)}">${result.severity} Severity</span></div>
+                                    <div class="conf-wrap" style="max-width:300px;margin:0 auto 12px auto">
+                                        <div class="conf-fill" style="width:${result.confidence}%;background:var(--b500)"></div>
+                                    </div>
+                                    <div style="font-size:14px;color:var(--slate600);margin-bottom:16px">Confidence: ${result.confidence}%</div>
+                                    <div style="background:var(--slate50);border-radius:12px;padding:16px;margin-bottom:16px;text-align:left">
+                                        <div style="font-weight:600;margin-bottom:6px">💊 Treatment</div>
+                                        <div style="font-size:13px;color:var(--slate600);margin-bottom:12px">${result.treatment}</div>
+                                        <div style="font-weight:600;margin-bottom:6px">🛡️ Prevention</div>
+                                        <div style="font-size:13px;color:var(--slate600)">${result.prevention}</div>
+                                    </div>
+                                    <button class="btn-primary" onclick="goPage('results')">View History →</button>
+                                </div>
+                            `;
+                        }
                         refreshHistoryDisplay();
+                        showToast(`Detection complete: ${result.disease}`, 'success');
                     }, 1500);
                 };
                 reader.readAsDataURL(file);
@@ -331,33 +587,58 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (uploadZone) {
         uploadZone.addEventListener('click', (e) => {
-            if (e.target.id !== 'browse-btn' && e.target.closest('#browse-btn') === null) {
+            if (e.target.id !== 'browse-btn' && e.target.closest('#browse-btn') === null && fileInput) {
                 fileInput.click();
+            }
+        });
+        
+        // Drag and drop
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('drag-over');
+        });
+        
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('drag-over');
+        });
+        
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file && (file.type === 'image/jpeg' || file.type === 'image/png') && fileInput) {
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                fileInput.files = dt.files;
+                const changeEvent = new Event('change');
+                fileInput.dispatchEvent(changeEvent);
+            } else {
+                showToast('Please upload a JPG or PNG image', 'error');
             }
         });
     }
     
     const browseBtn = document.getElementById('browse-btn');
-    if (browseBtn) {
+    if (browseBtn && fileInput) {
         browseBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             fileInput.click();
         });
     }
-});
-
-window.clearImage = function() {
-    const fileInput = document.getElementById('file-input');
-    const previewImg = document.getElementById('preview-img');
-    const uploadPlaceholder = document.getElementById('upload-placeholder');
-    const clearBtn = document.getElementById('clear-btn');
-    const resultPlaceholder = document.getElementById('result-placeholder');
-    const resultOutput = document.getElementById('result-output');
     
-    fileInput.value = '';
-    previewImg.classList.add('hidden');
-    uploadPlaceholder.style.display = 'flex';
-    if (clearBtn) clearBtn.style.display = 'none';
-    resultPlaceholder.style.display = 'flex';
-    resultOutput.classList.add('hidden');
-};
+    // Add CSS for severity badges
+    const style = document.createElement('style');
+    style.textContent = `
+        .severity-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .severity-low { background: #dcfce7; color: #166534; }
+        .severity-high { background: #fee2e2; color: #991b1b; }
+        .drag-over { border-color: #2166c4 !important; background: #dceeff !important; }
+    `;
+    document.head.appendChild(style);
+});
