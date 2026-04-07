@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="icon.png" type="image/x-icon">
+    <title>AgroAI – Plant Leaf Disease Detection</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+
+<body> <!-- ══════════ TOPBAR ══════════ -->
+    <header class="topbar" id="topbar">
+        <div class="tb-brand" onclick="goPage('landing')" style="cursor:pointer">Agro<span>AI</span></div>
+        <nav class="tb-nav" id="tb-nav" style="display:none"> <button class="tb-btn active"
+                data-page="home">Home</button> <button class="tb-btn" data-page="detect">Detect</button> <button
+                class="tb-btn" data-page="model">Model Analysis</button> <button class="tb-btn"
+                data-page="results">Results</button> <button class="tb-btn" data-page="about">About</button> </nav>
+        <div class="tb-spacer"></div>
+        <div id="tb-guest"> <button type="button" class="page active" onclick="navToLogin()"> <svg width="15"
+                    height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    style="margin-right:6px;vertical-align:-2px">
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                    <polyline points="10 17 15 12 10 7" />
+                    <line x1="15" y1="12" x2="3" y2="12" />
+                </svg> Login </button> <button type="button" class="btn-primary btn-sm tb-signup-glow"
+                onclick="navToSignup()">Sign Up</button> </div>
+        <div id="tb-user" style="display:none" class="tb-user-info"> <span class="tb-username"
+                id="tb-username-label"></span> <button class="btn-secondary btn-sm" onclick="logout()">Logout</button>
+        </div>
+    </header> <!-- ══════════ LANDING / ENTRANCE ══════════ -->
+    <main id="page-landing" class="page">
+        <div class="landing-wrap">
+            <div class="land-orb land-orb1"></div>
+            <div class="land-orb land-orb2"></div>
+            <div class="land-orb land-orb3"></div>
+            <div class="leaf-particle lp1">🌿</div>
+            <div class="leaf-particle lp2">🍃</div>
+            <div class="leaf-particle lp3">🌱</div>
+            <div class="leaf-particle lp4">🍃</div>
+            <div class="land-content">
+                <div class="land-badge"><span class="land-badge-dot"></span>AI-Powered Plant Health Analysis</div>
+                <h1 class="land-title">Detect Crop Diseases<br><span class="land-title-em">Before They Spread</span>
+                </h1>
+                <p class="land-desc">Upload a single Plant leaf photo and receive an instant AI-powered diagnosis —
+                    severity ratings, treatment protocols, and prevention strategies in seconds.</p>
+                <div class="land-actions"> <button class="land-cta-primary" onclick="goPage('signup')"> <span>Get
+                            Started Free</span> <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2.5">
+                            <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg> </button> <button class="land-cta-secondary" onclick="goPage('login')"> <svg width="16"
+                            height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            style="margin-right:6px">
+                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                            <polyline points="10 17 15 12 10 7" />
+                            <line x1="15" y1="12" x2="3" y2="12" />
+                        </svg> Sign In </button> </div>
+                <div class="land-stats">
+                    <div class="land-stat-pill">
+                        <div class="land-stat-n">96.7%</div>
+                        <div class="land-stat-l">Accuracy</div>
+                    </div>
+                    <div class="land-stat-pill">
+                        <div class="land-stat-n">3.6ms</div>
+                        <div class="land-stat-l">Inference</div>
+                    </div>
+                    <div class="land-stat-pill">
+                        <div class="land-stat-n">10</div>
+                        <div class="land-stat-l">Diseases</div>
+                    </div>
+                    <div class="land-stat-pill">
+                        <div class="land-stat-n">10K+</div>
+                        <div class="land-stat-l">Trained</div>
+                    </div>
+                </div>
+            </div>
+            <div class="land-cards">
+                <div class="land-feat-card lfc1">
+                    <div class="lfc-icon">📸</div>
+                    <div class="lfc-title">Upload &amp; Detect</div>
+                    <div class="lfc-desc">Snap a photo, get instant AI diagnosis with confidence scores</div>
+                </div>
+                <div class="land-feat-card lfc2">
+                    <div class="lfc-icon">⚡</div>
+                    <div class="lfc-title">YOLOv8 Powered</div>
+                    <div class="lfc-desc">State-of-the-art detection running in under 4 milliseconds</div>
+                </div>
+                <div class="land-feat-card lfc3">
+                    <div class="lfc-icon">💊</div>
+                    <div class="lfc-title">Treatment Guide</div>
+                    <div class="lfc-desc">Evidence-based protocols for every disease class detected</div>
+                </div>
+                <div class="land-feat-card lfc4">
+                    <div class="lfc-icon">📊</div>
+                    <div class="lfc-title">Track History</div>
+                    <div class="lfc-desc">Monitor your farm's health trends over time with analytics</div>
+                </div>
+            </div>
+        </div>
+        <div class="land-below">
+            <div class="land-below-inner">
+                <div class="land-sec-label">How It Works</div>
+                <h2 class="land-sec-title"></h2>
+                <div class="land-steps">
+                    <div class="land-step">
+                        <div class="land-step-num">01</div>
+                        <div class="land-step-icon">📷</div>
+                        <div class="land-step-title">Photograph the Leaf</div>
+                        <div class="land-step-desc">Take a clear, well-lit photo of your plant leaf and upload it in
+                            JPG or PNG </div>
+                    </div>
+                    <div class="land-step-arrow">→</div>
+                    <div class="land-step">
+                        <div class="land-step-num">02</div>
+                        <div class="land-step-icon">🤖</div>
+                        <div class="land-step-title">AI Analyses It</div>
+                        <div class="land-step-desc">YOLOv8 processes the image and returns classification with
+                            confidence scores </div>
+                    </div>
+                    <div class="land-step-arrow">→</div>
+                    <div class="land-step">
+                        <div class="land-step-num">03</div>
+                        <div class="land-step-icon">💡</div>
+                        <div class="land-step-title">Get Treatment Advice</div>
+                        <div class="land-step-desc">View severity, symptoms, treatment steps, and prevention guidance
+                            instantly </div>
+                    </div>
+                </div>
+                <div style="text-align:center;margin-top:48px"> <button class="land-cta-primary"
+                        onclick="goPage('signup')"> <span>Start for Free</span> <svg width="18" height="18"
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg> </button> </div>
+            </div>
+        </div>
+    </main> <!-- ══════════ LOGIN ══════════ -->
+    <main id="page-login" class="page">
+        <div class="auth-wrap">
+            <div class="auth-card">
+                <div class="auth-logo">Agro<span>AI</span></div>
+                <h2 class="auth-title">Welcome back</h2>
+                <p class="auth-sub">Sign in to detect plant leaf diseases</p>
+                <div id="login-error" class="alert alert-error" style="display:none"></div>
+                <div id="login-success" class="alert alert-success" style="display:none"></div>
+                <div class="form-group"> <label class="form-label">Username</label> <input class="form-input"
+                        id="login-username" type="text" placeholder="Enter your username" autocomplete="username" />
+                </div>
+                <div class="form-group"> <label class="form-label">Password</label>
+                    <div class="pw-wrap"> <input class="form-input" id="login-password" type="password"
+                            placeholder="Enter your password" autocomplete="current-password" /> <button type="button"
+                            class="pw-eye" onclick="togglePw('login-password',this)" aria-label="Show password">
+                            <!-- Eye open --> <svg class="eye-icon eye-open" xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                <circle cx="12" cy="12" r="3" />
+                            </svg> <!-- Eye off --> <svg class="eye-icon eye-off" xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                                <path
+                                    d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                                <line x1="1" y1="1" x2="23" y2="23" />
+                            </svg> </button> </div>
+                </div>
+                <div class="forgot-row"><a class="auth-link" href="javascript:void(0)" onclick="goPage('forgot')">Forgot
+                        Password?</a></div> <button class="btn-primary btn-full" id="login-btn" onclick="doLogin()">Sign
+                    In</button>
+                <div class="auth-footer"> Don't have an account? <a class="auth-link" href="javascript:void(0)"
+                        onclick="goPage('signup')">Create one</a> </div>
+            </div>
+        </div>
+    </main> <!-- ══════════ SIGNUP ══════════ -->
+    <main id="page-signup" class="page">
+        <div class="auth-wrap">
+            <div class="auth-card">
+                <div class="auth-logo">Agro<span>AI</span></div>
+                <h2 class="auth-title">Create account</h2>
+                <p class="auth-sub">Join AgroAI to start detecting diseases</p>
+                <div id="signup-error" class="alert alert-error" style="display:none"></div>
+                <div id="signup-success" class="alert alert-success" style="display:none"></div>
+                <div class="form-group"> <label class="form-label">Username</label> <input class="form-input"
+                        id="signup-username" type="text" placeholder="Choose a username" /> </div>
+                <div class="form-group"> <label class="form-label">Email Address</label> <input class="form-input"
+                        id="signup-email" type="email" placeholder="your@email.com" /> </div>
+                <div class="form-group"> <label class="form-label">Password</label>
+                    <div class="pw-wrap"> <input class="form-input" id="signup-password" type="password"
+                            placeholder="Minimum 6 characters" /> <button type="button" class="pw-eye"
+                            onclick="togglePw('signup-password',this)" aria-label="Show password"> <svg
+                                class="eye-icon eye-open" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                <circle cx="12" cy="12" r="3" />
+                            </svg> <svg class="eye-icon eye-off" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" style="display:none">
+                                <path
+                                    d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                                <line x1="1" y1="1" x2="23" y2="23" />
+                            </svg> </button> </div>
+                </div>
+                <div class="form-group"> <label class="form-label">Confirm Password</label>
+                    <div class="pw-wrap"> <input class="form-input" id="signup-confirm" type="password"
+                            placeholder="Repeat your password" /> <button type="button" class="pw-eye"
+                            onclick="togglePw('signup-confirm',this)" aria-label="Show confirm password"> <svg
+                                class="eye-icon eye-open" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                <circle cx="12" cy="12" r="3" />
+                            </svg> <svg class="eye-icon eye-off" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" style="display:none">
+                                <path
+                                    d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                                <line x1="1" y1="1" x2="23" y2="23" />
+                            </svg> </button> </div>
+                </div> <button class="btn-primary btn-full" id="signup-btn" onclick="doSignup()">Create Account</button>
+                <!-- FIX: href="javascript:void(0)" ensures onclick always fires -->
+                <div class="auth-footer"> Already have an account? <a class="auth-link" href="javascript:void(0)"
+                        onclick="goPage('login')">Sign in</a> </div>
+            </div>
+        </div>
+    </main> <!-- ══════════ FORGOT PASSWORD ══════════ -->
+    <main id="page-forgot" class="page">
+        <div class="auth-wrap">
+            <div class="auth-card">
+                <div class="auth-logo">Agro<span>AI</span></div>
+                <h2 class="auth-title">Reset Password</h2>
+                <p class="auth-sub">Enter your registered email to reset your password.</p>
+                <div id="forgot-error" class="alert alert-error" style="display:none"></div>
+                <div id="forgot-success" class="alert alert-success" style="display:none"></div>
+                <div class="form-group"> <label class="form-label">Email Address</label> <input class="form-input"
+                        id="forgot-email" type="email" placeholder="your@email.com" /> </div>
+                <div class="form-group" id="new-pw-group" style="display:none"> <label class="form-label">New
+                        Password</label> <input class="form-input" id="forgot-newpw" type="password"
+                        placeholder="Minimum 6 characters" /> </div>
+                <div class="form-group" id="confirm-pw-group" style="display:none"> <label class="form-label">Confirm
+                        New Password</label> <input class="form-input" id="forgot-confirmpw" type="password"
+                        placeholder="Repeat new password" /> </div> <button class="btn-primary btn-full" id="forgot-btn"
+                    type="button" onclick="doForgot()">Verify Email</button>
+                <div class="auth-footer"> Remembered it? <a class="auth-link" href="javascript:void(0)"
+                        onclick="goPage('login')">Back to Login</a> </div>
+            </div>
+        </div>
+    </main> <!-- ══════════ HOME ══════════ -->
+    <main id="page-home" class="page">
+        <section class="hero">
+            <div class="hero-inner">
+                <div class="hero-tag">Precision Agriculture &middot; Real-time Detection &middot; YOLOv8</div>
+                <h1 class="hero-title">AI-Powered Plant Leaf<br><em>Disease Detection</em></h1>
+                <p class="hero-sub">Upload a single leaf photograph and receive an instant AI diagnosis — complete with
+                    severity rating, treatment protocol, and prevention recommendations.</p> <button
+                    class="btn-primary hero-cta" onclick="goPage('detect')">Start Detection &rarr;</button>
+            </div>
+            <div class="hero-visual">
+                <div class="hero-card hc1">
+                    <div class="hc-label">Accuracy</div>
+                    <div class="hc-value">96.7%</div>
+                </div>
+                <div class="hero-card hc2">
+                    <div class="hc-label">Inference</div>
+                    <div class="hc-value">3.6 ms</div>
+                </div>
+                <div class="hero-card hc3">
+                    <div class="hc-label">Classes</div>
+                    <div class="hc-value">10</div>
+                </div>
+            </div>
+        </section> <!-- Stats Strip -->
+        <div class="stats-strip">
+            <div class="stat-item">
+                <div class="stat-n">96.7%</div>
+                <div class="stat-l">mAP50 Accuracy</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-n">10</div>
+                <div class="stat-l">Disease Classes</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-n">3.6 ms</div>
+                <div class="stat-l">Inference Speed</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-n">10,853</div>
+                <div class="stat-l">Training Images</div>
+            </div>
+        </div>
+        <section class="section section-bottom">
+            <div class="two-col" style="margin-top:48px;">
+                <div>
+                    <div class="section-label">How It Works</div>
+                    <h2 class="section-heading">Three steps to a diagnosis</h2>
+                    <div class="steps">
+                        <div class="step-card">
+                            <div class="step-num">01</div>
+                            <div>
+                                <div class="step-title">Upload a Leaf Photograph</div>
+                                <div class="step-desc">Take a clear, well-lit photo of a plant leaf and upload it in
+                                    JPG or PNG format. </div>
+                            </div>
+                        </div>
+                        <div class="step-card">
+                            <div class="step-num">02</div>
+                            <div>
+                                <div class="step-title">AI Analyses the Image</div>
+                                <div class="step-desc">YOLOv8 processes the image and returns disease classification
+                                    with confidence scores.</div>
+                            </div>
+                        </div>
+                        <div class="step-card">
+                            <div class="step-num">03</div>
+                            <div>
+                                <div class="step-title">Receive Treatment Advice</div>
+                                <div class="step-desc">View severity rating, symptoms, treatment steps, and prevention
+                                    guidance instantly.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="section-label">Disease Reference</div>
+                    <h2 class="section-heading">10 Detectable Conditions</h2>
+                    <div class="dtable" id="disease-table"></div>
+                </div>
+            </div>
+        </section>
+    </main> <!-- ══════════ DETECT ══════════ -->
+    <main id="page-detect" class="page">
+        <div class="page-wrap">
+            <div class="section-label">Computer Vision Analysis</div>
+            <h2 class="page-heading">Disease Detection</h2>
+            <div class="detect-grid">
+                <div class="panel">
+                    <div class="panel-title">Upload Image</div>
+                    <!-- FIX: upload-zone click and Browse button both used to call fileInput.click() causing the file dialog to open twice (double-click behavior). Solution: Browse button uses id="browse-btn" with stopPropagation in app.js. The zone click listener checks if target is the button and skips if so. -->
+                    <div class="upload-zone" id="upload-zone"> <input type="file" id="file-input"
+                            accept=".jpg,.jpeg,.png" hidden />
+                        <div class="upload-placeholder" id="upload-placeholder">
+                            <div class="upload-icon"> <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="1.5">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                    <polyline points="17 8 12 3 7 8" />
+                                    <line x1="12" y1="3" x2="12" y2="15" />
+                                </svg> </div>
+                            <div class="upload-text">Click or drag to upload</div>
+                            <div class="upload-sub">JPG or PNG — plant leaf image</div>
+                            <!-- id="browse-btn" — no inline onclick, handled cleanly in app.js --> <button
+                                class="btn-primary" style="margin-top:8px" id="browse-btn">Browse Files</button>
+                        </div> <img id="preview-img" class="preview-img hidden" alt="Preview" />
+                    </div> <button class="btn-secondary mt-12" id="clear-btn" style="display:none"
+                        onclick="clearImage()">Clear Image</button>
+                </div>
+                <div class="panel">
+                    <div class="panel-title">Detection Results</div>
+                    <div id="result-placeholder" class="empty-box">
+                        <div class="empty-icon"> <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="1.5">
+                                <circle cx="11" cy="11" r="8" />
+                                <path d="m21 21-4.35-4.35" />
+                            </svg> </div>
+                        <div>Upload a leaf image to<br>begin analysis</div>
+                    </div>
+                    <div id="loading-box" class="loading-box hidden">
+                        <div class="spinner"></div>
+                        <div>Analysing image with YOLOv8...</div>
+                    </div>
+                    <div id="result-output" class="hidden"></div>
+                </div>
+            </div>
+        </div>
+    </main> <!-- ══════════ MODEL ANALYSIS ══════════ -->
+    <main id="page-model" class="page">
+        <div class="page-wrap">
+            <div class="section-label">Comparative Benchmarking &middot; YOLOv8 vs Traditional Models</div>
+            <h2 class="page-heading">Model Analysis</h2>
+            <div class="metrics-row" style="margin-bottom:28px;">
+                <div class="metric-card">
+                    <div class="metric-n">96.7%</div>
+                    <div class="metric-l">mAP50 (YOLOv8)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-n">94.2%</div>
+                    <div class="metric-l">Avg Precision</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-n">93.8%</div>
+                    <div class="metric-l">Avg Recall</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-n">3.6 ms</div>
+                    <div class="metric-l">Inference Speed</div>
+                </div>
+            </div>
+            <div class="analysis-grid">
+                <div class="card">
+                    <div class="card-title">Performance Metrics — Model Comparison</div>
+                    <div style="margin-bottom:14px;">
+                        <div
+                            style="display:flex;justify-content:space-between;font-size:13px;color:#64748b;margin-bottom:6px;font-weight:600;">
+                            <span>YOLOv8 (Proposed)</span><span style="color:#2166c4;">96.7%</span>
+                        </div>
+                        <div style="background:#f1f5f9;border-radius:6px;height:10px;overflow:hidden;">
+                            <div
+                                style="width:96.7%;height:10px;background:linear-gradient(90deg,#1a52a0,#4d8fd6);border-radius:6px;">
+                            </div>
+                        </div>
+                    </div>
+                    <div style="margin-bottom:14px;">
+                        <div
+                            style="display:flex;justify-content:space-between;font-size:13px;color:#64748b;margin-bottom:6px;font-weight:600;">
+                            <span>Random Forest</span><span style="color:#475569;">78.4%</span>
+                        </div>
+                        <div style="background:#f1f5f9;border-radius:6px;height:10px;overflow:hidden;">
+                            <div style="width:78.4%;height:10px;background:#94a3b8;border-radius:6px;"></div>
+                        </div>
+                    </div>
+                    <div style="margin-bottom:14px;">
+                        <div
+                            style="display:flex;justify-content:space-between;font-size:13px;color:#64748b;margin-bottom:6px;font-weight:600;">
+                            <span>Decision Tree</span><span style="color:#475569;">71.2%</span>
+                        </div>
+                        <div style="background:#f1f5f9;border-radius:6px;height:10px;overflow:hidden;">
+                            <div style="width:71.2%;height:10px;background:#94a3b8;border-radius:6px;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div
+                            style="display:flex;justify-content:space-between;font-size:13px;color:#64748b;margin-bottom:6px;font-weight:600;">
+                            <span>SVM</span><span style="color:#475569;">83.1%</span>
+                        </div>
+                        <div style="background:#f1f5f9;border-radius:6px;height:10px;overflow:hidden;">
+                            <div style="width:83.1%;height:10px;background:#94a3b8;border-radius:6px;"></div>
+                        </div>
+                    </div>
+                    <p style="font-size:12px;color:#94a3b8;margin-top:18px;">* Based on PlantVillage tomato leaf dataset
+                        (10,853 images, 10 classes)</p>
+                </div>
+                <div class="card">
+                    <div class="card-title">Comparative Performance Chart</div>
+                    <div class="chart-wrap"> <canvas id="model-chart"></canvas> </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">Per-Class YOLOv8 Performance</div>
+                <div class="two-col-equal" style="margin-bottom:0;">
+                    <div>
+                        <table class="compare-table">
+                            <thead>
+                                <tr>
+                                    <th>Disease Class</th>
+                                    <th>Precision</th>
+                                    <th>Recall</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Bacterial Spot</td>
+                                    <td>94.1%</td>
+                                    <td>95.3%</td>
+                                </tr>
+                                <tr>
+                                    <td>Early Blight</td>
+                                    <td>94.4%</td>
+                                    <td>95.7%</td>
+                                </tr>
+                                <tr>
+                                    <td>Late Blight</td>
+                                    <td>93.2%</td>
+                                    <td>94.1%</td>
+                                </tr>
+                                <tr>
+                                    <td>Leaf Mold</td>
+                                    <td>91.5%</td>
+                                    <td>92.8%</td>
+                                </tr>
+                                <tr>
+                                    <td>Septoria Leaf Spot</td>
+                                    <td>92.7%</td>
+                                    <td>93.4%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div>
+                        <table class="compare-table">
+                            <thead>
+                                <tr>
+                                    <th>Disease Class</th>
+                                    <th>Precision</th>
+                                    <th>Recall</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Spider Mites</td>
+                                    <td>90.3%</td>
+                                    <td>91.6%</td>
+                                </tr>
+                                <tr>
+                                    <td>Target Spot</td>
+                                    <td>89.8%</td>
+                                    <td>90.5%</td>
+                                </tr>
+                                <tr>
+                                    <td>Yellow Leaf Curl Virus</td>
+                                    <td>96.5%</td>
+                                    <td>51.2%</td>
+                                </tr>
+                                <tr>
+                                    <td>Mosaic Virus</td>
+                                    <td>86.2%</td>
+                                    <td>96.6%</td>
+                                </tr>
+                                <tr>
+                                    <td class="model-highlight">Healthy</td>
+                                    <td class="model-highlight">99.7%</td>
+                                    <td class="model-highlight">99.5%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main> <!-- ══════════ RESULTS ══════════ -->
+    <main id="page-results" class="page">
+        <div class="page-wrap">
+            <div class="section-label">Session Records</div>
+            <h2 class="page-heading">Detection History</h2>
+            <div class="metrics-row">
+                <div class="metric-card">
+                    <div class="metric-n" id="m-total">0</div>
+                    <div class="metric-l">Total Scans</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-n" id="m-diseased">0</div>
+                    <div class="metric-l">Diseased</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-n" id="m-healthy">0</div>
+                    <div class="metric-l">Healthy</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-n" id="m-avg">—</div>
+                    <div class="metric-l">Avg. Confidence</div>
+                </div>
+            </div>
+            <div class="card" style="padding:0;overflow:hidden;">
+                <table class="htable">
+                    <thead>
+                        <tr>
+                            <th>Disease</th>
+                            <th>Confidence</th>
+                            <th>Severity</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-body">
+                        <tr>
+                            <td colspan="4" class="empty-row">No detections yet.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-20" style="text-align:center"> <button class="btn-secondary" onclick="clearHistory()">Clear
+                    All History</button> </div>
+        </div>
+    </main> <!-- ══════════ ABOUT ══════════ -->
+    <main id="page-about" class="page">
+        <div class="about-section">
+            <div class="section-label">Project Documentation</div>
+            <h2 class="page-heading">About AgroAI</h2>
+            <div class="card">
+                <div class="card-title">Project Overview</div>
+                <p class="body-text">AgroAI is a real-time plant leaf disease detection system built on the YOLOv8
+                    object detection architecture. It classifies 10 distinct disease conditions from a single leaf
+                    photograph and delivers immediate severity ratings, evidence-based treatment protocols, and
+                    actionable prevention recommendations — enabling faster, data-driven decisions for farmers and
+                    agronomists.</p>
+            </div>
+            <div class="two-col-equal">
+                <div class="card">
+                    <div class="card-title">Model Specifications</div>
+                    <div class="info-list">
+                        <div class="info-row"><span class="info-label">Architecture</span><span
+                                class="info-value">YOLOv8</span> </div>
+                        <div class="info-row"><span class="info-label">Training Images</span><span
+                                class="info-value">10,853</span> </div>
+                        <div class="info-row"><span class="info-label">mAP50 Accuracy</span><span
+                                class="info-value">96.7%</span> </div>
+                        <div class="info-row"><span class="info-label">Avg. Precision</span><span
+                                class="info-value">94.2%</span> </div>
+                        <div class="info-row"><span class="info-label">Avg. Recall</span><span
+                                class="info-value">93.8%</span></div>
+                        <div class="info-row"><span class="info-label">Inference Speed</span><span
+                                class="info-value">3.6 ms / image</span></div>
+                        <div class="info-row"><span class="info-label">Dataset</span><span
+                                class="info-value">PlantVillage</span> </div>
+                        <div class="info-row"><span class="info-label">Disease Classes</span><span
+                                class="info-value">10</span> </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="card">
+                        <div class="card-title">Technology Stack</div>
+                        <div class="chips"> <span class="chip">YOLOv8</span><span class="chip">FastAPI</span> <span
+                                class="chip">SQLite</span><span class="chip">Python 3.11</span> <span
+                                class="chip">HTML5</span><span class="chip">CSS3</span> <span
+                                class="chip">Poppins</span><span class="chip">Chart.js</span> <span
+                                class="chip">Ultralytics</span> </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">Aim of Agro Al Plant Leaf Detection</div>
+                        <ol class="run-list">
+                            <li> <code>To develop an Al-based system that can detect plant leaf diseases and help farmers take quick action to protect crops and improve yield.</code>
+                            </li>
+                            
+                          <li> Web site: <code>https://agro-ai-bdu.vercel.app/</code></li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">Per-Class Model Performance</div>
+                <div id="perf-bars"></div>
+            </div>
+        </div>
+    </main>
+    <footer class="footer">
+        <div class="footer-top"> <strong>AgroAI</strong> &nbsp;&middot;&nbsp; Plant Leaf Disease Detection
+            &nbsp;&middot;&nbsp; Powered by YOLOv8 </div>
+        <div class="footer-copy"> &copy; 2026 AgroAI by Yaswanth kumar. All rights reserved. </div>
+    </footer>
+    <script src="app.js"></script>
+    <script> function togglePw(inputId, btn) { var inp = document.getElementById(inputId); var isHidden = inp.type === 'password'; inp.type = isHidden ? 'text' : 'password'; btn.querySelector('.eye-open').style.display = isHidden ? 'none' : ''; btn.querySelector('.eye-off').style.display = isHidden ? '' : 'none'; } </script>
+</body>
+
+</html>
