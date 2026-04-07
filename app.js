@@ -18,7 +18,7 @@ function showToast(msg, type = 'info') {
   t._tmr = setTimeout(() => { t.style.display = 'none'; }, 3200);
 }
 
-const API = 'https://agroai-backend-0tg4.onrender.com';
+const API = 'http://localhost:8000';
 
 /* ─── DISEASE DATA ─── */
 const DISEASES = [
@@ -153,14 +153,7 @@ async function doSignup() {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ username, email, password }),
     });
-let data;
-try {
-  data = await res.json();
-} catch (e) {
-  const text = await res.text();
-  console.error("SERVER ERROR:", text);
-  throw new Error("Server returned invalid response");
-}
+    const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Signup failed.');
     showAlert(okBox, 'Account created! Redirecting to login...');
     setTimeout(() => { clearSignupForm(); goPage('login'); }, 1500);
