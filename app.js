@@ -870,4 +870,4 @@ document.addEventListener('DOMContentLoaded', () => {
         .severity-critical, .badge-critical { background: #fdf2f8; color: #9d174d; }
         .drag-over { border-color: #2166c4 !important; background: #dceeff !important; }
         .badge-low { background: #dcfce7; color: #166534; }
-        .toast { position: fixed; bottom: 20px; right: 20px; padding
+        .toast { position: fixed; bottom: 20px; right: 20px; padding }
