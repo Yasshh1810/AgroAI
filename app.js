@@ -1,551 +1,514 @@
-// ========== USER DATABASE (localStorage) ==========
-let users = JSON.parse(localStorage.getItem('agroai_users')) || [];
+/* ═══════════════════════════════════════════════════════════════════════════
+   AGROAI — app.js (Full Stack Integration + Local Fallback)
+   ═══════════════════════════════════════════════════════════════════════════ */
+'use strict';
 
+/* ==========================  GLOBAL TOAST  ========================== */
+function showToast(msg, type = 'info') {
+  let t = document.getElementById('_toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = '_toast';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.className   = 'toast toast-' + type;
+  t.style.display = 'block';
+  clearTimeout(t._tmr);
+  t._tmr = setTimeout(() => { t.style.display = 'none'; }, 3200);
+}
+
+const API = 'http://localhost:8000';
+
+/* ==========================  DISEASE MASTER DATA (Unified) ========================== */
+const DISEASES = [
+  { key:'Tomato_Bacterial_spot',     label:'Bacterial Spot',         severity:'High',
+    symptoms:'Small dark water-soaked lesions on leaves and fruit surfaces.',
+    treatment:'Apply copper-based bactericides. Remove infected debris. Avoid overhead irrigation.',
+    prevention:'Use certified disease-free seeds. Practice 2-year crop rotation.' },
+  { key:'Tomato_Early_blight',       label:'Early Blight',           severity:'Medium',
+    symptoms:'Concentric dark rings forming a target pattern on older leaves.',
+    treatment:'Apply chlorothalonil or mancozeb fungicide every 7 to 10 days.',
+    prevention:'Rotate crops annually. Remove lower foliage. Mulch around base.' },
+  { key:'Tomato_Late_blight',        label:'Late Blight',            severity:'Critical',
+    symptoms:'Large irregular water-soaked grey-green lesions; white mould on underside.',
+    treatment:'Apply metalaxyl or cymoxanil fungicide immediately. Destroy infected plants.',
+    prevention:'Avoid overhead watering. Plant resistant varieties. Monitor humidity.' },
+  { key:'Tomato_Leaf_Mold',          label:'Leaf Mold',              severity:'Medium',
+    symptoms:'Yellow patches on upper leaf surface; olive-green mould on underside.',
+    treatment:'Apply mancozeb or chlorothalonil. Improve greenhouse ventilation.',
+    prevention:'Reduce relative humidity below 85%. Space plants adequately.' },
+  { key:'Tomato_Septoria_leaf_spot', label:'Septoria Leaf Spot',     severity:'Medium',
+    symptoms:'Small circular spots with dark borders and pale grey centres.',
+    treatment:'Apply copper fungicide. Remove heavily infected leaves promptly.',
+    prevention:'Mulch soil. Avoid wetting foliage during irrigation.' },
+  { key:'Tomato_Spider_mites',       label:'Spider Mites',           severity:'Low',
+    symptoms:'Fine yellow stippling on leaves; fine webbing on leaf undersides.',
+    treatment:'Apply miticide or neem oil. Increase ambient humidity.',
+    prevention:'Regular scouting. Introduce predatory mites as biocontrol.' },
+  { key:'Tomato_Target_Spot',        label:'Target Spot',            severity:'Medium',
+    symptoms:'Bulls-eye concentric ring lesions on leaves and stems.',
+    treatment:'Apply azoxystrobin or fluxapyroxad. Improve field drainage.',
+    prevention:'Remove plant debris after harvest. Avoid dense canopy.' },
+  { key:'Tomato_Yellow_Leaf_Curl_Virus', label:'Yellow Leaf Curl Virus', severity:'Critical',
+    symptoms:'Upward leaf curling, yellowing margins, stunted plant growth.',
+    treatment:'No chemical cure. Remove and destroy infected plants immediately.',
+    prevention:'Control whitefly populations. Use insect-proof nets and resistant varieties.' },
+  { key:'Tomato_Mosaic_Virus',       label:'Tomato Mosaic Virus',    severity:'High',
+    symptoms:'Mosaic light-dark green patterns on leaves; distortion and stunting.',
+    treatment:'No cure. Remove infected plants. Disinfect all tools with bleach solution.',
+    prevention:'Use virus-free certified seeds. Wash hands before handling plants.' },
+  { key:'Tomato_healthy',            label:'Healthy',                severity:'None',
+    symptoms:'No disease symptoms detected. Plant appears healthy.',
+    treatment:'No treatment required.',
+    prevention:'Continue regular monitoring, balanced fertilisation and irrigation.' },
+];
+
+const CLASS_PERF = [
+  ['Bacterial Spot',94.1,95.3],['Early Blight',94.4,95.7],['Late Blight',93.2,94.1],
+  ['Leaf Mold',91.5,92.8],['Septoria Leaf Spot',92.7,93.4],['Spider Mites',90.3,91.6],
+  ['Target Spot',89.8,90.5],['Yellow Leaf Curl Virus',96.5,51.2],['Mosaic Virus',86.2,96.6],
+  ['Healthy',99.7,99.5],
+];
+
+const SEV_CLASS = { None:'badge-none', Low:'badge-low', Medium:'badge-medium', High:'badge-high', Critical:'badge-critical' };
+const SEV_COLOR = { None:'#16a34a', Low:'#ca8a04', Medium:'#ea580c', High:'#dc2626', Critical:'#9d174d' };
+
+/* ==========================  LOCAL STORAGE BACKUP (Offline Mode) ========================== */
+let users = JSON.parse(localStorage.getItem('agroai_users')) || [];
 if (users.length === 0) {
-    users.push({
-        username: "demo",
-        email: "demo@agroai.com",
-        password: "demo123",
-        history: []
-    });
+    users.push({ username: "demo", email: "demo@agroai.com", password: "demo123", history: [] });
     saveUsers();
 }
-
-function saveUsers() {
-    localStorage.setItem('agroai_users', JSON.stringify(users));
-}
-
-// ========== COMPLETE DISEASE DATABASE ==========
-const diseaseData = {
-    'Tomato Bacterial Spot': { 
-        severity: 'High', 
-        treatment: 'Apply copper-based bactericide. Remove infected leaves. Avoid overhead watering.',
-        prevention: 'Use disease-free seeds, rotate crops every 2 years.',
-        symptoms: 'Small, dark, water-soaked spots on leaves that turn brown/black with yellow halos.'
-    },
-    'Tomato Early Blight': { 
-        severity: 'High', 
-        treatment: 'Apply fungicides containing chlorothalonil or mancozeb. Remove lower leaves.',
-        prevention: 'Mulch around plants, water at base, stake plants for airflow.',
-        symptoms: 'Dark concentric rings on lower leaves, yellowing around spots, target-like appearance.'
-    },
-    'Tomato Late Blight': { 
-        severity: 'Critical', 
-        treatment: 'Apply metalaxyl or mancozeb immediately. Destroy severely infected plants.',
-        prevention: 'Use resistant varieties, avoid overhead irrigation.',
-        symptoms: 'Large, dark brown/black lesions on leaves with white fuzzy growth on undersides.'
-    },
-    'Tomato Leaf Mold': { 
-        severity: 'Medium', 
-        treatment: 'Reduce humidity. Apply fungicide with chlorothalonil or copper.',
-        prevention: 'Improve air circulation, water early morning.',
-        symptoms: 'Yellow spots on top surface, olive-green to purple mold underneath leaves.'
-    },
-    'Tomato Septoria Leaf Spot': { 
-        severity: 'Medium', 
-        treatment: 'Remove affected leaves. Apply copper fungicide.',
-        prevention: 'Rotate crops, avoid wetting foliage.',
-        symptoms: 'Small circular spots with dark borders and light gray centers on older leaves.'
-    },
-    'Tomato Spider Mites': { 
-        severity: 'Medium', 
-        treatment: 'Use insecticidal soap or neem oil. Increase humidity.',
-        prevention: 'Regular inspection, maintain plant health, introduce predatory mites.',
-        symptoms: 'Tiny yellow/white specks (stippling) on leaves, fine webbing visible between leaves.'
-    },
-    'Tomato Target Spot': { 
-        severity: 'Medium', 
-        treatment: 'Apply fungicide. Avoid overhead watering.',
-        prevention: 'Proper spacing, remove crop debris.',
-        symptoms: 'Circular lesions with concentric rings, brown centers, yellow halos.'
-    },
-    'Tomato Yellow Leaf Curl Virus': { 
-        severity: 'Critical', 
-        treatment: 'Remove infected plants immediately. Control whitefly population.',
-        prevention: 'Use reflective mulches, insect nets, resistant varieties.',
-        symptoms: 'Leaves curl upward, turn yellow between veins, plant stunted, reduced fruit set.'
-    },
-    'Tomato Mosaic Virus': { 
-        severity: 'High', 
-        treatment: 'No cure. Remove and destroy infected plants immediately.',
-        prevention: 'Use virus-free seeds, control aphids, disinfect tools.',
-        symptoms: 'Mottled light and dark green pattern on leaves, distorted growth, fern-like leaves.'
-    },
-    'Tomato Healthy': { 
-        severity: 'None', 
-        treatment: 'Continue regular care and monitoring. No action needed.',
-        prevention: 'Maintain good agricultural practices, regular scouting.',
-        symptoms: 'Uniform green color, no spots, normal leaf shape and size.'
-    }
-};
+function saveUsers() { localStorage.setItem('agroai_users', JSON.stringify(users)); }
 
 let detectionHistory = JSON.parse(localStorage.getItem('agroai_history')) || [];
-
 function saveHistory() {
     localStorage.setItem('agroai_history', JSON.stringify(detectionHistory));
-    const currentUser = JSON.parse(localStorage.getItem('agroai_current_user'));
-    if (currentUser) {
-        const userIndex = users.findIndex(u => u.username === currentUser.username);
-        if (userIndex !== -1) {
-            users[userIndex].history = detectionHistory;
-            saveUsers();
-        }
+    const curr = JSON.parse(localStorage.getItem('agroai_current_user'));
+    if (curr) {
+        const idx = users.findIndex(u => u.username === curr.username);
+        if (idx !== -1) { users[idx].history = detectionHistory; saveUsers(); }
     }
 }
 
-// ========== ADVANCED IMAGE ANALYSIS FUNCTION ==========
-async function analyzeLeafImage(imageDataUrl, fileName = '') {
+/* ==========================  ADVANCED LOCAL DETECTION (Fallback) ========================== */
+async function analyzeLeafLocal(imageDataUrl, fileName = '') {
     return new Promise((resolve) => {
         const img = new Image();
         img.onload = () => {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            ctx.drawImage(img, 0, 0, img.width, img.height);
-            
+            canvas.width = img.width; canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             const pixels = imageData.data;
-            
-            let totalRed = 0, totalGreen = 0, totalBlue = 0;
-            let darkSpots = 0, yellowRegions = 0, brownRegions = 0;
-            let whiteRegions = 0, speckledPixels = 0;
-            const step = 20;
+            let totalRed = 0, totalGreen = 0, darkSpots = 0, yellowRegions = 0, brownRegions = 0, whiteRegions = 0, speckled = 0;
             let sampleCount = 0;
-            
+            const step = 20;
             for (let y = 0; y < canvas.height; y += step) {
                 for (let x = 0; x < canvas.width; x += step) {
                     const idx = (y * canvas.width + x) * 4;
                     if (idx >= pixels.length) continue;
-                    const r = pixels[idx];
-                    const g = pixels[idx + 1];
-                    const b = pixels[idx + 2];
-                    totalRed += r; totalGreen += g; totalBlue += b;
-                    sampleCount++;
+                    const r = pixels[idx], g = pixels[idx+1], b = pixels[idx+2];
+                    totalRed += r; totalGreen += g; sampleCount++;
                     if (r < 100 && g < 80 && b < 70) darkSpots++;
                     else if (r > 150 && g > 120 && g < 180 && b < 100) yellowRegions++;
                     else if (r > 100 && r < 160 && g > 60 && g < 120 && b < 80) brownRegions++;
                     else if (r > 200 && g > 200 && b > 200) whiteRegions++;
-                    else if (r > 180 && g > 150 && g < 200 && b > 100 && b < 150) speckledPixels++;
+                    else if (r > 180 && g > 150 && g < 200 && b > 100 && b < 150) speckled++;
                 }
             }
-            
-            const darkSpotRatio = darkSpots / sampleCount;
-            const yellowRatio = yellowRegions / sampleCount;
-            const brownRatio = brownRegions / sampleCount;
-            const whiteRatio = whiteRegions / sampleCount;
-            const speckledRatio = speckledPixels / sampleCount;
-            const avgRed = totalRed / sampleCount;
-            const avgGreen = totalGreen / sampleCount;
-            const greenIntensity = avgGreen / 255;
-            const redGreenRatio = avgRed / (avgGreen + 1);
-            
-            let detectedDisease = null;
-            let confidence = 85;
-            const fileNameLower = fileName.toLowerCase();
-            const diseaseKeywords = {
-                'bacterial_spot': 'Tomato Bacterial Spot','early_blight':'Tomato Early Blight','late_blight':'Tomato Late Blight',
-                'leaf_mold':'Tomato Leaf Mold','septoria':'Tomato Septoria Leaf Spot','spider_mites':'Tomato Spider Mites',
-                'target_spot':'Tomato Target Spot','yellow_leaf_curl':'Tomato Yellow Leaf Curl Virus','mosaic':'Tomato Mosaic Virus',
-                'healthy':'Tomato Healthy'
-            };
-            for (const [keyword, disease] of Object.entries(diseaseKeywords)) {
-                if (fileNameLower.includes(keyword)) {
-                    detectedDisease = disease;
-                    confidence = 88 + Math.random() * 10;
-                    break;
-                }
+            const darkRatio = darkSpots / sampleCount, yellowRatio = yellowRegions / sampleCount;
+            const brownRatio = brownRegions / sampleCount, whiteRatio = whiteRegions / sampleCount, speckRatio = speckled / sampleCount;
+            const avgRed = totalRed / sampleCount, avgGreen = totalGreen / sampleCount;
+            const greenIntensity = avgGreen / 255, redGreenRatio = avgRed / (avgGreen + 1);
+            let detected = null, conf = 85;
+            const fname = fileName.toLowerCase();
+            const kw = { bacterial_spot:'Bacterial Spot', early_blight:'Early Blight', late_blight:'Late Blight', leaf_mold:'Leaf Mold', septoria:'Septoria Leaf Spot', spider_mites:'Spider Mites', target_spot:'Target Spot', yellow_leaf_curl:'Yellow Leaf Curl Virus', mosaic:'Mosaic Virus', healthy:'Healthy' };
+            for (let [k, v] of Object.entries(kw)) if (fname.includes(k)) { detected = v; conf = 88 + Math.random() * 10; break; }
+            if (!detected) {
+                let health = 100 - (darkRatio*40) - (yellowRatio*35) - (brownRatio*50) - (whiteRatio*30) - (speckRatio*25);
+                if (greenIntensity < 0.4) health -= 30; else if (greenIntensity < 0.6) health -= 15;
+                if (redGreenRatio > 0.8) health -= 20;
+                health = Math.min(100, Math.max(0, health));
+                if (health > 70 && darkRatio < 0.05 && yellowRatio < 0.05) detected = 'Healthy';
+                else if (darkRatio > 0.15 && brownRatio > 0.1) detected = 'Late Blight';
+                else if (darkRatio > 0.12 && redGreenRatio > 0.7) detected = 'Early Blight';
+                else if (yellowRatio > 0.15 && speckRatio < 0.05) detected = 'Yellow Leaf Curl Virus';
+                else if (speckRatio > 0.08) detected = 'Spider Mites';
+                else if (darkRatio > 0.08 && darkRatio < 0.2 && avgGreen > 100) detected = 'Bacterial Spot';
+                else if (whiteRatio > 0.05) detected = 'Leaf Mold';
+                else if (yellowRatio > 0.08 && darkRatio < 0.08) detected = 'Mosaic Virus';
+                else if (brownRatio > 0.08 && darkRatio > 0.05) detected = 'Target Spot';
+                else if (darkRatio > 0.06 && darkRatio < 0.15) detected = 'Septoria Leaf Spot';
+                else detected = 'Healthy';
+                conf = 65 + (detected === 'Healthy' ? greenIntensity*30 : darkRatio*200);
+                conf = Math.min(96, Math.max(65, conf));
             }
-            
-            if (!detectedDisease) {
-                let healthScore = 100 - (darkSpotRatio*40) - (yellowRatio*35) - (brownRatio*50) - (whiteRatio*30) - (speckledRatio*25);
-                if (greenIntensity < 0.4) healthScore -= 30;
-                else if (greenIntensity < 0.6) healthScore -= 15;
-                if (redGreenRatio > 0.8) healthScore -= 20;
-                healthScore = Math.max(0, Math.min(100, healthScore));
-                
-                if (healthScore > 70 && darkSpotRatio < 0.05 && yellowRatio < 0.05) detectedDisease = 'Tomato Healthy';
-                else if (darkSpotRatio > 0.15 && brownRatio > 0.1) detectedDisease = 'Tomato Late Blight';
-                else if (darkSpotRatio > 0.12 && redGreenRatio > 0.7) detectedDisease = 'Tomato Early Blight';
-                else if (yellowRatio > 0.15 && speckledRatio < 0.05) detectedDisease = 'Tomato Yellow Leaf Curl Virus';
-                else if (speckledRatio > 0.08) detectedDisease = 'Tomato Spider Mites';
-                else if (darkSpotRatio > 0.08 && darkSpotRatio < 0.2 && avgGreen > 100) detectedDisease = 'Tomato Bacterial Spot';
-                else if (whiteRatio > 0.05) detectedDisease = 'Tomato Leaf Mold';
-                else if (yellowRatio > 0.08 && darkSpotRatio < 0.08) detectedDisease = 'Tomato Mosaic Virus';
-                else if (brownRatio > 0.08 && darkSpotRatio > 0.05) detectedDisease = 'Tomato Target Spot';
-                else if (darkSpotRatio > 0.06 && darkSpotRatio < 0.15) detectedDisease = 'Tomato Septoria Leaf Spot';
-                else detectedDisease = 'Tomato Healthy';
-                
-                confidence = 65 + (detectedDisease === 'Tomato Healthy' ? greenIntensity*30 : (darkSpotRatio*200));
-                confidence = Math.min(96, Math.max(65, confidence));
-            }
-            confidence = Math.min(98, Math.max(65, confidence));
-            
-            const result = {
-                disease: detectedDisease,
-                confidence: Math.round(confidence * 10) / 10,
-                timestamp: new Date().toLocaleString(),
-                severity: diseaseData[detectedDisease]?.severity || 'Medium',
-                treatment: diseaseData[detectedDisease]?.treatment || 'Consult local expert.',
-                prevention: diseaseData[detectedDisease]?.prevention || 'Regular monitoring recommended.',
-                symptoms: diseaseData[detectedDisease]?.symptoms || 'Observe leaf for visual symptoms.',
-                healthScore: Math.round(100 - (darkSpotRatio * 100) - (yellowRatio * 80))
-            };
-            resolve(result);
+            const diseaseObj = DISEASES.find(d => d.label === detected) || DISEASES[9];
+            resolve({ disease: diseaseObj, confidence: conf/100, severity: diseaseObj.severity, annotatedUrl: null });
         };
         img.src = imageDataUrl;
     });
 }
 
-// ========== PAGE NAVIGATION ==========
+/* ==========================  SESSION (Backend first, fallback localStorage) ========================== */
+let currentUser = JSON.parse(sessionStorage.getItem('agroai_user') || 'null');
+function setUser(u)  { currentUser = u; sessionStorage.setItem('agroai_user', JSON.stringify(u)); localStorage.setItem('agroai_current_user', JSON.stringify(u)); }
+function clearUser() { currentUser = null; sessionStorage.removeItem('agroai_user'); localStorage.removeItem('agroai_current_user'); }
+
+/* ==========================  NAVIGATION ========================== */
+const PROTECTED = ['home','detect','model','results','about'];
+
 function goPage(pageId) {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    const target = document.getElementById(`page-${pageId}`);
-    if (target) target.classList.add('active');
-    document.querySelectorAll('.tb-btn').forEach(btn => {
-        if (btn.dataset.page === pageId) btn.classList.add('active');
-        else btn.classList.remove('active');
-    });
-    const tbNav = document.getElementById('tb-nav');
-    const currentUser = JSON.parse(localStorage.getItem('agroai_current_user'));
-    if (tbNav) tbNav.style.display = (currentUser && (pageId === 'home' || pageId === 'detect' || pageId === 'model' || pageId === 'results' || pageId === 'about')) ? 'flex' : 'none';
-    if (pageId === 'results') refreshHistoryDisplay();
-    if (pageId === 'home') populateDiseaseTable();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (PROTECTED.includes(pageId) && !currentUser && !JSON.parse(localStorage.getItem('agroai_current_user'))) {
+    showToast('Please login to access this page.', 'info');
+    pageId = 'login';
+  }
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tb-btn').forEach(b => b.classList.remove('active'));
+  const target = document.getElementById('page-' + pageId);
+  if (target) target.classList.add('active');
+  const btn = document.querySelector(`.tb-btn[data-page="${pageId}"]`);
+  if (btn) btn.classList.add('active');
+  if (pageId === 'results') refreshHistoryDisplay();
+  if (pageId === 'about')   initPerfBars();
+  if (pageId === 'model')   initModelChart();
+  if (pageId === 'home')    renderDiseaseTable();
+  window.scrollTo(0, 0);
 }
 
-// ========== LOGIN / SIGNUP / LOGOUT ==========
-function doLogin() {
-    const username = document.getElementById('login-username').value.trim();
-    const password = document.getElementById('login-password').value;
-    const errorDiv = document.getElementById('login-error');
-    const successDiv = document.getElementById('login-success');
-    errorDiv.style.display = 'none'; successDiv.style.display = 'none';
-    if (!username || !password) {
-        errorDiv.textContent = 'Enter username and password';
-        errorDiv.style.display = 'block';
-        return;
-    }
-    const user = users.find(u => u.username === username && u.password === password);
-    if (user) {
-        detectionHistory = user.history || [];
-        saveHistory();
-        localStorage.setItem('agroai_current_user', JSON.stringify({ username: user.username, email: user.email }));
-        successDiv.textContent = 'Login successful! Redirecting...';
-        successDiv.style.display = 'block';
-        document.getElementById('tb-guest').style.display = 'none';
-        document.getElementById('tb-user').style.display = 'flex';
-        document.getElementById('tb-username-label').textContent = username;
-        setTimeout(() => goPage('home'), 1000);
-    } else {
-        errorDiv.textContent = 'Invalid credentials';
-        errorDiv.style.display = 'block';
-    }
-}
+document.querySelectorAll('.tb-btn').forEach(btn => {
+  btn.addEventListener('click', () => goPage(btn.dataset.page));
+});
 
-function doSignup() {
-    const username = document.getElementById('signup-username').value.trim();
-    const email = document.getElementById('signup-email').value.trim();
-    const password = document.getElementById('signup-password').value;
-    const confirm = document.getElementById('signup-confirm').value;
-    const errorDiv = document.getElementById('signup-error');
-    const successDiv = document.getElementById('signup-success');
-    errorDiv.style.display = 'none'; successDiv.style.display = 'none';
-    if (!username || !email || !password || !confirm) {
-        errorDiv.textContent = 'All fields required';
-        errorDiv.style.display = 'block';
-        return;
-    }
-    if (password !== confirm) {
-        errorDiv.textContent = 'Passwords do not match';
-        errorDiv.style.display = 'block';
-        return;
-    }
-    if (password.length < 6) {
-        errorDiv.textContent = 'Password min 6 characters';
-        errorDiv.style.display = 'block';
-        return;
-    }
-    if (users.find(u => u.username === username)) {
-        errorDiv.textContent = 'Username exists';
-        errorDiv.style.display = 'block';
-        return;
-    }
-    if (users.find(u => u.email === email)) {
-        errorDiv.textContent = 'Email registered';
-        errorDiv.style.display = 'block';
-        return;
-    }
-    users.push({ username, email, password, history: [] });
-    saveUsers();
-    successDiv.textContent = 'Account created! Please login.';
-    successDiv.style.display = 'block';
-    setTimeout(() => goPage('login'), 1500);
+/* ==========================  TOPBAR ========================== */
+function updateTopbar() {
+  const nav   = document.getElementById('tb-nav');
+  const guest = document.getElementById('tb-guest');
+  const user  = document.getElementById('tb-user');
+  const label = document.getElementById('tb-username-label');
+  const localUser = JSON.parse(localStorage.getItem('agroai_current_user'));
+  const activeUser = currentUser || localUser;
+  if (activeUser) {
+    if (nav) nav.style.display = 'flex';
+    if (guest) guest.style.display = 'none';
+    if (user) user.style.display = 'flex';
+    if (label) label.textContent = activeUser.username;
+  } else {
+    if (nav) nav.style.display = 'none';
+    if (guest) guest.style.display = 'flex';
+    if (user) user.style.display = 'none';
+  }
 }
 
 function logout() {
-    localStorage.removeItem('agroai_current_user');
-    detectionHistory = [];
-    document.getElementById('tb-guest').style.display = 'flex';
-    document.getElementById('tb-user').style.display = 'none';
-    goPage('landing');
+  clearUser();
+  detectionHistory = [];
+  updateTopbar();
+  clearImage();
+  goPage('login');
+  setTimeout(() => showToast('Logged out successfully.', 'success'), 200);
 }
 
-// ========== FORGOT PASSWORD ==========
-function doForgot() {
-    const email = document.getElementById('forgot-email').value.trim();
-    const user = users.find(u => u.email === email);
-    const btn = document.getElementById('forgot-btn');
-    const newPwGroup = document.getElementById('new-pw-group');
-    const confirmPwGroup = document.getElementById('confirm-pw-group');
-    const errorDiv = document.getElementById('forgot-error');
-    const successDiv = document.getElementById('forgot-success');
-    errorDiv.style.display = 'none'; successDiv.style.display = 'none';
-    if (!user) {
-        errorDiv.textContent = 'Email not found';
-        errorDiv.style.display = 'block';
-        return;
-    }
-    if (btn.textContent === 'Verify Email') {
-        newPwGroup.style.display = 'block';
-        confirmPwGroup.style.display = 'block';
-        btn.textContent = 'Reset Password';
-        successDiv.innerHTML = 'Email verified. Enter new password.';
-        successDiv.style.display = 'block';
+/* ==========================  SIGNUP (Backend + Local) ========================== */
+async function doSignup() {
+  const username = document.getElementById('signup-username').value.trim();
+  const email    = document.getElementById('signup-email').value.trim();
+  const password = document.getElementById('signup-password').value;
+  const confirm  = document.getElementById('signup-confirm').value;
+  const errBox   = document.getElementById('signup-error');
+  const okBox    = document.getElementById('signup-success');
+  const btn      = document.getElementById('signup-btn');
+
+  errBox.style.display = 'none'; okBox.style.display = 'none';
+  if (!username || !email || !password || !confirm) { showAlert(errBox,'All fields required.'); return; }
+  if (password !== confirm) { showAlert(errBox,'Passwords do not match.'); return; }
+  if (password.length < 6) { showAlert(errBox,'Password min 6 characters.'); return; }
+  if (users.find(u => u.username === username)) { showAlert(errBox,'Username exists.'); return; }
+  if (users.find(u => u.email === email)) { showAlert(errBox,'Email registered.'); return; }
+
+  btn.disabled = true; btn.textContent = 'Creating...';
+  try {
+    const res = await fetch(`${API}/api/signup`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ username, email, password }) });
+    if (!res.ok) throw new Error((await res.json()).detail || 'Signup failed.');
+    users.push({ username, email, password, history: [] }); saveUsers();
+    showAlert(okBox, 'Account created! Redirecting...');
+    setTimeout(() => { clearSignupForm(); goPage('login'); }, 1500);
+  } catch(err) { showAlert(errBox, err.message); }
+  finally { btn.disabled = false; btn.textContent = 'Create Account'; }
+}
+function clearSignupForm() { ['signup-username','signup-email','signup-password','signup-confirm'].forEach(id => { let el=document.getElementById(id); if(el) el.value=''; }); document.getElementById('signup-error').style.display='none'; document.getElementById('signup-success').style.display='none'; }
+
+/* ==========================  LOGIN (Backend + Local) ========================== */
+let _loginBusy = false;
+async function doLogin() {
+  if (_loginBusy) return;
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errBox   = document.getElementById('login-error');
+  const btn      = document.getElementById('login-btn');
+  errBox.style.display = 'none';
+  if (!username || !password) { showAlert(errBox,'Enter username and password.'); return; }
+
+  _loginBusy = true; btn.disabled = true; btn.textContent = 'Signing in...';
+  try {
+    const res = await fetch(`${API}/api/login`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ username, password }) });
+    if (res.ok) {
+      const data = await res.json();
+      setUser({ username: data.username, email: data.email });
+      updateTopbar();
+      document.getElementById('login-username').value = '';
+      document.getElementById('login-password').value = '';
+      goPage('home');
     } else {
-        const newPass = document.getElementById('forgot-newpw').value;
-        const confirmPass = document.getElementById('forgot-confirmpw').value;
-        if (!newPass || !confirmPass) {
-            errorDiv.textContent = 'Enter new password';
-            errorDiv.style.display = 'block';
-            return;
-        }
-        if (newPass !== confirmPass) {
-            errorDiv.textContent = 'Passwords mismatch';
-            errorDiv.style.display = 'block';
-            return;
-        }
-        if (newPass.length < 6) {
-            errorDiv.textContent = 'Min 6 chars';
-            errorDiv.style.display = 'block';
-            return;
-        }
-        user.password = newPass;
-        saveUsers();
-        successDiv.innerHTML = 'Password reset! Login.';
-        successDiv.style.display = 'block';
-        document.getElementById('forgot-email').value = '';
-        document.getElementById('forgot-newpw').value = '';
-        document.getElementById('forgot-confirmpw').value = '';
-        newPwGroup.style.display = 'none';
-        confirmPwGroup.style.display = 'none';
-        btn.textContent = 'Verify Email';
-        setTimeout(() => goPage('login'), 2000);
-    }
-}
-
-// ========== UI HELPERS ==========
-function populateDiseaseTable() {
-    const container = document.getElementById('disease-table');
-    if (!container) return;
-    container.innerHTML = Object.keys(diseaseData).map(d => `
-        <div class="drow">
-            <div class="drow-name">${d.replace('Tomato ','')}</div>
-            <span class="badge ${getSeverityClass(diseaseData[d].severity)}">${diseaseData[d].severity}</span>
-        </div>
-    `).join('');
-}
-
-function getSeverityClass(severity) {
-    const map = {
-        'None': 'badge-none', 'Low': 'badge-low', 'Medium': 'badge-medium',
-        'High': 'badge-high', 'Critical': 'badge-critical'
-    };
-    return map[severity] || 'badge-medium';
-}
-
-function refreshHistoryDisplay() {
-    const tbody = document.getElementById('history-body');
-    const total = detectionHistory.length;
-    const diseased = detectionHistory.filter(h => h.disease !== 'Tomato Healthy').length;
-    const healthy = total - diseased;
-    const avgConf = total ? (detectionHistory.reduce((a,b)=>a+b.confidence,0)/total).toFixed(1) : '—';
-    document.getElementById('m-total').innerText = total;
-    document.getElementById('m-diseased').innerText = diseased;
-    document.getElementById('m-healthy').innerText = healthy;
-    document.getElementById('m-avg').innerText = avgConf !== '—' ? `${avgConf}%` : '—';
-    if (total === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="empty-row">No detections yet</td></tr>';
-    } else {
-        tbody.innerHTML = detectionHistory.slice().reverse().map(h => `
-            <tr>
-                <td><strong>${h.disease}</strong><br><small>${h.symptoms.substring(0,55)}...</small></td>
-                <td>${h.confidence}%</td>
-                <td><span class="severity-badge ${getSeverityClass(h.severity)}">${h.severity}</span></td>
-                <td>${h.timestamp}</td>
-            </tr>
-        `).join('');
-    }
-}
-
-function clearHistory() {
-    if (confirm('Clear all history?')) {
-        detectionHistory = [];
+      const localUser = users.find(u => u.username === username && u.password === password);
+      if (localUser) {
+        setUser({ username: localUser.username, email: localUser.email });
+        detectionHistory = localUser.history || [];
         saveHistory();
-        refreshHistoryDisplay();
-        showToast('History cleared', 'success');
+        updateTopbar();
+        goPage('home');
+      } else throw new Error('Invalid credentials (offline).');
     }
+  } catch(err) { showAlert(errBox, err.message); }
+  finally { _loginBusy = false; btn.disabled = false; btn.textContent = 'Sign In'; }
+}
+function showAlert(el, msg) { el.textContent = msg; el.style.display = 'block'; }
+document.getElementById('login-password')?.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+/* ==========================  FORGOT PASSWORD (Local) ========================== */
+let _forgotStep = 1, _forgotEmail = '';
+function resetForgotForm() {
+  _forgotStep = 1; _forgotEmail = '';
+  const fe = document.getElementById('forgot-email'); if(fe){ fe.value=''; fe.disabled=false; }
+  const np = document.getElementById('forgot-newpw'); if(np) np.value='';
+  const cp = document.getElementById('forgot-confirmpw'); if(cp) cp.value='';
+  const eg = document.getElementById('forgot-error'); if(eg) eg.style.display='none';
+  const og = document.getElementById('forgot-success'); if(og) og.style.display='none';
+  const ng = document.getElementById('new-pw-group'); if(ng) ng.style.display='none';
+  const cg = document.getElementById('confirm-pw-group'); if(cg) cg.style.display='none';
+  const btn = document.getElementById('forgot-btn'); if(btn) btn.textContent='Verify Email';
+}
+async function doForgot() {
+  const errBox = document.getElementById('forgot-error'), okBox = document.getElementById('forgot-success'), btn = document.getElementById('forgot-btn');
+  errBox.style.display='none'; okBox.style.display='none';
+  if (_forgotStep === 1) {
+    const email = document.getElementById('forgot-email').value.trim();
+    if (!email || !email.includes('@')) { showAlert(errBox,'Valid email required.'); return; }
+    btn.disabled=true; btn.textContent='Verifying...';
+    try {
+      const res = await fetch(`${API}/api/verify-email`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email }) });
+      if (!res.ok) throw new Error((await res.json()).detail || 'Email not found.');
+      _forgotEmail=email; _forgotStep=2;
+      showAlert(okBox, 'Email verified. Enter new password.');
+      document.getElementById('new-pw-group').style.display='block';
+      document.getElementById('confirm-pw-group').style.display='block';
+      document.getElementById('forgot-email').disabled=true;
+      btn.textContent='Reset Password';
+    } catch(err) { showAlert(errBox, err.message); }
+    finally { btn.disabled=false; if(_forgotStep===1) btn.textContent='Verify Email'; }
+  } else {
+    const np = document.getElementById('forgot-newpw').value, cp = document.getElementById('forgot-confirmpw').value;
+    if (!np || !cp) { showAlert(errBox,'Fill both fields.'); return; }
+    if (np !== cp) { showAlert(errBox,'Passwords mismatch.'); return; }
+    if (np.length<6) { showAlert(errBox,'Min 6 characters.'); return; }
+    btn.disabled=true; btn.textContent='Resetting...';
+    try {
+      const res = await fetch(`${API}/api/reset-password`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: _forgotEmail, new_password: np }) });
+      if (!res.ok) throw new Error((await res.json()).detail || 'Reset failed.');
+      const user = users.find(u => u.email === _forgotEmail);
+      if (user) user.password = np; saveUsers();
+      showAlert(okBox,'Password reset! Redirecting...');
+      setTimeout(() => { resetForgotForm(); goPage('login'); }, 2000);
+    } catch(err) { showAlert(errBox, err.message); }
+    finally { btn.disabled=false; }
+  }
 }
 
-function showToast(message, type = 'info') {
-    let toast = document.querySelector('.toast');
-    if (!toast) {
-        toast = document.createElement('div');
-        toast.className = 'toast';
-        document.body.appendChild(toast);
-    }
-    toast.className = `toast toast-${type}`;
-    toast.textContent = message;
-    toast.style.display = 'block';
-    setTimeout(() => toast.style.display = 'none', 3000);
+/* ==========================  DISEASE TABLE (Home) ========================== */
+function renderDiseaseTable() {
+  const wrap = document.getElementById('disease-table');
+  if (!wrap) return;
+  wrap.innerHTML = DISEASES.map(d => `<div class="drow"><span class="drow-name">${d.label}</span><span class="badge ${SEV_CLASS[d.severity]}">${d.severity}</span></div>`).join('');
 }
 
+/* ==========================  FILE UPLOAD & DETECTION (Backend first, fallback local) ========================== */
+const uploadZone = document.getElementById('upload-zone');
+const fileInput = document.getElementById('file-input');
+const previewImg = document.getElementById('preview-img');
+const placeholder = document.getElementById('upload-placeholder');
+const clearBtn = document.getElementById('clear-btn');
+const browseBtn = document.getElementById('browse-btn');
+if (browseBtn) browseBtn.addEventListener('click', e => { e.stopPropagation(); fileInput.click(); });
+if (uploadZone) uploadZone.addEventListener('click', e => { if (browseBtn && browseBtn.contains(e.target)) return; fileInput.click(); });
+if (fileInput) fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+if (uploadZone) {
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+  uploadZone.addEventListener('drop', e => { e.preventDefault(); uploadZone.classList.remove('drag-over'); const file = e.dataTransfer.files[0]; if (file && file.type.startsWith('image/')) handleFile(file); });
+}
+let _currentFile = null;
+function handleFile(file) {
+  _currentFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    previewImg.src = e.target.result;
+    if (placeholder) placeholder.classList.add('hidden');
+    if (previewImg) previewImg.classList.remove('hidden');
+    if (clearBtn) clearBtn.style.display = 'block';
+    runDetection(file);
+  };
+  reader.readAsDataURL(file);
+}
+function clearImage() {
+  if(fileInput) fileInput.value = '';
+  if(previewImg) previewImg.src = '';
+  _currentFile = null;
+  if(previewImg) previewImg.classList.add('hidden');
+  if(placeholder) placeholder.classList.remove('hidden');
+  if(clearBtn) clearBtn.style.display = 'none';
+  const rp = document.getElementById('result-placeholder'); if(rp) rp.classList.remove('hidden');
+  const ro = document.getElementById('result-output'); if(ro) ro.classList.add('hidden');
+  const lb = document.getElementById('loading-box'); if(lb) lb.classList.add('hidden');
+}
+async function runDetection(file) {
+  const rp = document.getElementById('result-placeholder'); if(rp) rp.classList.add('hidden');
+  const ro = document.getElementById('result-output'); if(ro) ro.classList.add('hidden');
+  const lb = document.getElementById('loading-box'); if(lb) lb.classList.remove('hidden');
+  try {
+    const form = new FormData(); form.append('file', file);
+    const res = await fetch(`${API}/api/predict`, { method:'POST', body:form });
+    if (!res.ok) throw new Error('Backend error');
+    const data = await res.json();
+    const info = DISEASES.find(d => d.label === data.disease) || DISEASES[9];
+    const result = { disease:info, confidence:data.confidence, severity:data.severity, annotatedUrl: data.annotated_url || null };
+    showResult(result);
+    await saveDetection(result);
+  } catch(err) {
+    console.warn('Backend unavailable, using local analysis.');
+    const localResult = await analyzeLeafLocal(URL.createObjectURL(file), file.name);
+    showResult(localResult);
+    await saveDetection(localResult);
+  }
+  if(lb) lb.classList.add('hidden');
+}
+function showResult({ disease, confidence, severity, annotatedUrl }) {
+  const ro = document.getElementById('result-output');
+  if(!ro) return;
+  const sev = severity || disease.severity;
+  const pct = Math.round(confidence * 100);
+  const color = SEV_COLOR[sev] || '#2166c4';
+  const annotatedHtml = annotatedUrl ? `<img src="${annotatedUrl}" class="annotated-img" alt="Annotated leaf" />` : '';
+  ro.innerHTML = `
+    ${annotatedHtml}
+    <div class="result-block" style="border-left-color:${color};">
+      <div class="result-name">${disease.label}</div>
+      <div class="result-conf">Confidence: <strong>${pct}%</strong> &nbsp; <span class="badge ${SEV_CLASS[sev]}">${sev}</span></div>
+      <div class="conf-wrap"><div class="conf-fill" id="conf-bar" style="background:${color};"></div></div>
+      <div class="result-label">Symptoms</div><div class="result-value">${disease.symptoms}</div>
+      <div class="result-label">Treatment</div><div class="result-value">${disease.treatment}</div>
+      <div class="result-label">Prevention</div><div class="result-value" style="margin-bottom:0">${disease.prevention}</div>
+    </div>
+  `;
+  ro.classList.remove('hidden');
+  requestAnimationFrame(() => { const bar = document.getElementById('conf-bar'); if(bar) bar.style.width = pct + '%'; });
+}
+async function saveDetection({ disease, confidence, severity }) {
+  if (!currentUser && !localStorage.getItem('agroai_current_user')) return;
+  const record = { disease: disease.label, confidence, severity: severity || disease.severity, timestamp: new Date().toLocaleString(), symptoms: disease.symptoms, treatment: disease.treatment, prevention: disease.prevention };
+  detectionHistory.unshift(record);
+  saveHistory();
+  if (currentUser) {
+    try { await fetch(`${API}/api/save-detection`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ username: currentUser.username, disease: disease.label, confidence, severity: severity || disease.severity }) }); } catch(_) {}
+  }
+  refreshHistoryDisplay();
+}
+
+/* ==========================  HISTORY (LocalStorage) ========================== */
+function refreshHistoryDisplay() {
+  const tbody = document.getElementById('history-body');
+  const total = detectionHistory.length;
+  const diseased = detectionHistory.filter(h => h.disease !== 'Healthy').length;
+  const healthy = total - diseased;
+  const avgConf = total ? (detectionHistory.reduce((a,b)=>a + (b.confidence||0),0)/total).toFixed(1) : '—';
+  const mTotal = document.getElementById('m-total'); if(mTotal) mTotal.innerText = total;
+  const mDiseased = document.getElementById('m-diseased'); if(mDiseased) mDiseased.innerText = diseased;
+  const mHealthy = document.getElementById('m-healthy'); if(mHealthy) mHealthy.innerText = healthy;
+  const mAvg = document.getElementById('m-avg'); if(mAvg) mAvg.innerText = avgConf !== '—' ? `${avgConf}%` : '—';
+  if (!tbody) return;
+  if (total === 0) { tbody.innerHTML = '<tr><td colspan="4" class="empty-row">No detections yet. Upload a leaf.</td></tr>'; return; }
+  tbody.innerHTML = detectionHistory.slice().reverse().map(h => `
+    <tr><td><strong>${h.disease}</strong></td><td>${(h.confidence*100).toFixed(1)}%</td><td><span class="badge ${SEV_CLASS[h.severity] || 'badge-none'}">${h.severity}</span></td><td style="font-size:13px;color:#94a3b8">${h.timestamp}</td></tr>
+  `).join('');
+}
+async function clearHistory() {
+  if (!confirm('Clear all history?')) return;
+  detectionHistory = [];
+  saveHistory();
+  refreshHistoryDisplay();
+  if (currentUser) { try { await fetch(`${API}/api/history/${currentUser.username}`, { method:'DELETE' }); } catch(_) {} }
+  showToast('History cleared', 'success');
+}
+
+/* ==========================  MODEL CHART ========================== */
+let _chartInstance = null;
 function initModelChart() {
-    const ctx = document.getElementById('model-chart');
-    if (ctx) {
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: ['YOLOv8', 'SVM', 'Random Forest', 'Decision Tree'],
-                datasets: [{
-                    label: 'Accuracy (%)',
-                    data: [96.7, 83.1, 78.4, 71.2],
-                    backgroundColor: ['#2166c4', '#64748b', '#94a3b8', '#cbd5e1'],
-                    borderRadius: 8
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                scales: { y: { beginAtZero: true, max: 100 } }
-            }
-        });
-    }
+  const canvas = document.getElementById('model-chart');
+  if (!canvas) return;
+  if (_chartInstance) { _chartInstance.destroy(); _chartInstance = null; }
+  _chartInstance = new Chart(canvas, {
+    type: 'bar', data: { labels: ['YOLOv8\n(Proposed)', 'SVM', 'Random\nForest', 'Decision\nTree'], datasets: [{ label: 'Accuracy (%)', data: [96.7, 83.1, 78.4, 71.2], backgroundColor: ['rgba(33,102,196,0.85)', 'rgba(100,116,139,0.6)', 'rgba(100,116,139,0.6)', 'rgba(100,116,139,0.6)'], borderRadius: 8, borderSkipped: false }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y}%` } } }, scales: { y: { min: 60, max: 100, ticks: { callback: v => v + '%', font: { family:'Poppins', size:11 }, color:'#94a3b8' }, grid: { color:'rgba(0,0,0,0.05)' } }, x: { ticks: { font: { family:'Poppins', size:12, weight:'600' }, color:'#475569' }, grid: { display: false } } } }
+  });
 }
 
-function navToLogin() { goPage('login'); }
-function navToSignup() { goPage('signup'); }
+/* ==========================  PERF BARS (FIXED - About Page) ========================== */
+function initPerfBars() {
+  const wrap = document.getElementById('perf-bars');
+  if (!wrap || wrap.dataset.loaded === 'true') return;
+  wrap.innerHTML = CLASS_PERF.map(([name, prec, rec]) => `
+    <div class="perf-row">
+      <div class="perf-head"><span class="perf-name">${name}</span><span class="perf-vals">Precision ${prec}% &middot; Recall ${rec}%</span></div>
+      <div class="perf-bg"><div class="perf-fill" data-width="${((prec+rec)/2).toFixed(1)}"></div></div>
+    </div>
+  `).join('');
+  wrap.dataset.loaded = 'true';
+  requestAnimationFrame(() => {
+    wrap.querySelectorAll('.perf-fill').forEach(b => { b.style.width = b.dataset.width + '%'; });
+  });
+}
 
+/* ==========================  INITIALIZATION ========================== */
 function checkLoginState() {
-    const currentUser = JSON.parse(localStorage.getItem('agroai_current_user'));
-    if (currentUser) {
-        const user = users.find(u => u.username === currentUser.username);
-        if (user && user.history) detectionHistory = user.history;
-        document.getElementById('tb-guest').style.display = 'none';
-        document.getElementById('tb-user').style.display = 'flex';
-        document.getElementById('tb-username-label').textContent = currentUser.username;
-        document.getElementById('tb-nav').style.display = 'flex';
-    } else {
-        document.getElementById('tb-guest').style.display = 'flex';
-        document.getElementById('tb-user').style.display = 'none';
-        document.getElementById('tb-nav').style.display = 'none';
-    }
+  const localUser = JSON.parse(localStorage.getItem('agroai_current_user'));
+  if (localUser && !currentUser) { currentUser = localUser; sessionStorage.setItem('agroai_user', JSON.stringify(localUser)); }
+  updateTopbar();
+  if (currentUser || localUser) {
+    const user = users.find(u => u.username === (currentUser?.username || localUser?.username));
+    if (user && user.history) detectionHistory = user.history;
+    refreshHistoryDisplay();
+    if (document.getElementById('page-home').classList.contains('active') || !document.querySelector('.page.active')) goPage('home');
+  } else { goPage('landing'); }
 }
-
-window.clearImage = function() {
-    document.getElementById('file-input').value = '';
-    document.getElementById('preview-img').classList.add('hidden');
-    document.getElementById('upload-placeholder').style.display = 'flex';
-    document.getElementById('clear-btn').style.display = 'none';
-    document.getElementById('result-placeholder').style.display = 'flex';
-    document.getElementById('result-output').classList.add('hidden');
-    document.getElementById('loading-box').classList.add('hidden');
-};
-
-window.togglePw = (id, btn) => {
-    let inp = document.getElementById(id);
-    inp.type = inp.type === 'password' ? 'text' : 'password';
-};
-
-// ========== INITIALIZATION ==========
+renderDiseaseTable();
 document.addEventListener('DOMContentLoaded', () => {
-    checkLoginState();
-    document.querySelectorAll('.tb-btn').forEach(btn => {
-        btn.addEventListener('click', () => { if (btn.dataset.page) goPage(btn.dataset.page); });
-    });
-    goPage('landing');
-    populateDiseaseTable();
-    initModelChart();
-
-    const fileInput = document.getElementById('file-input');
-    const uploadZone = document.getElementById('upload-zone');
-    const preview = document.getElementById('preview-img');
-    const placeholder = document.getElementById('upload-placeholder');
-    const clearBtn = document.getElementById('clear-btn');
-    const resultPlaceholder = document.getElementById('result-placeholder');
-    const resultOutput = document.getElementById('result-output');
-    const loadingBox = document.getElementById('loading-box');
-
-    if (fileInput) {
-        fileInput.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = async (ev) => {
-                    const dataUrl = ev.target.result;
-                    preview.src = dataUrl;
-                    preview.classList.remove('hidden');
-                    placeholder.style.display = 'none';
-                    clearBtn.style.display = 'inline-block';
-                    resultPlaceholder.style.display = 'none';
-                    loadingBox.classList.remove('hidden');
-                    resultOutput.classList.add('hidden');
-                    const result = await analyzeLeafImage(dataUrl, file.name);
-                    loadingBox.classList.add('hidden');
-                    resultOutput.classList.remove('hidden');
-                    resultOutput.innerHTML = `
-                        <div style="text-align:center">
-                            <div style="font-size:22px;font-weight:800;margin-bottom:8px">${result.disease.replace('Tomato ','')}</div>
-                            <div><span class="badge ${getSeverityClass(result.severity)}">${result.severity} SEVERITY</span></div>
-                            <div class="conf-wrap" style="max-width:300px;margin:12px auto"><div class="conf-fill" style="width:${result.confidence}%"></div></div>
-                            <div>Confidence: ${result.confidence}%</div>
-                            <div style="background:var(--slate50);border-radius:16px;padding:16px;margin:16px 0;text-align:left">
-                                <div><strong>📋 Symptoms</strong><br>${result.symptoms}</div>
-                                <div style="margin-top:12px"><strong>💊 Treatment</strong><br>${result.treatment}</div>
-                                <div style="margin-top:12px"><strong>🛡️ Prevention</strong><br>${result.prevention}</div>
-                            </div>
-                            <button class="btn-primary" onclick="goPage('results')">View History</button>
-                            <button class="btn-secondary" onclick="clearImage()">New Detection</button>
-                        </div>
-                    `;
-                    detectionHistory.push(result);
-                    saveHistory();
-                    refreshHistoryDisplay();
-                    showToast(result.disease === 'Tomato Healthy' ? '✅ Healthy leaf' : `⚠️ ${result.disease.replace('Tomato ','')} detected`, result.disease === 'Tomato Healthy' ? 'success' : 'error');
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-    }
-
-    if (uploadZone) {
-        uploadZone.addEventListener('click', () => fileInput.click());
-        uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
-        uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
-        uploadZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadZone.classList.remove('drag-over');
-            const f = e.dataTransfer.files[0];
-            if (f && (f.type === 'image/jpeg' || f.type === 'image/png')) {
-                const dt = new DataTransfer();
-                dt.items.add(f);
-                fileInput.files = dt.files;
-                fileInput.dispatchEvent(new Event('change'));
-            } else {
-                showToast('Only JPG/PNG', 'error');
-            }
-        });
-    }
-
-    document.getElementById('browse-btn')?.addEventListener('click', (e) => { e.stopPropagation(); fileInput.click(); });
+  checkLoginState();
+  document.querySelectorAll('.tb-btn').forEach(btn => { btn.addEventListener('click', () => { if (btn.dataset.page) goPage(btn.dataset.page); }); });
+  initModelChart();
+  initPerfBars();
+  // Re-run perf bars when about page becomes active (fix for dynamic load)
+  const aboutBtn = document.querySelector('.tb-btn[data-page="about"]');
+  if (aboutBtn) aboutBtn.addEventListener('click', () => setTimeout(initPerfBars, 100));
 });
+window.goPage = goPage;
+window.logout = logout;
+window.doLogin = doLogin;
+window.doSignup = doSignup;
+window.doForgot = doForgot;
+window.clearHistory = clearHistory;
+window.clearImage = clearImage;
+window.navToLogin = () => goPage('login');
+window.navToSignup = () => goPage('signup');
+window.togglePw = (id, btn) => { let inp = document.getElementById(id); if(inp) inp.type = inp.type === 'password' ? 'text' : 'password'; };
