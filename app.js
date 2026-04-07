@@ -94,7 +94,7 @@ function saveHistory() {
     }
 }
 
-// ========== FIXED IMAGE ANALYSIS FUNCTION - ACCURATE DETECTION ==========
+// ========== FIXED IMAGE ANALYSIS - HEALTHY PRIORITY ==========
 async function analyzeLeafImage(imageDataUrl, fileName = '') {
     return new Promise((resolve) => {
         const img = new Image();
@@ -114,7 +114,7 @@ async function analyzeLeafImage(imageDataUrl, fileName = '') {
             let whiteRegions = 0, speckledPixels = 0;
             let waterSoaked = 0, darkGreenHealthy = 0;
             
-            const step = 15; // finer sampling for better accuracy
+            const step = 15;
             let sampleCount = 0;
             
             for (let y = 0; y < canvas.height; y += step) {
@@ -131,7 +131,7 @@ async function analyzeLeafImage(imageDataUrl, fileName = '') {
                     totalBlue += b;
                     sampleCount++;
                     
-                    // HEALTHY GREEN - dark, rich green color (healthy leaves)
+                    // HEALTHY GREEN - dark, rich green color
                     if (g > 100 && g > r + 30 && g > b + 20 && r < 120 && b < 100) {
                         darkGreenHealthy++;
                     }
@@ -162,7 +162,7 @@ async function analyzeLeafImage(imageDataUrl, fileName = '') {
                 }
             }
             
-            // Calculate percentages
+            // Calculate ratios
             const darkSpotRatio = darkSpots / sampleCount;
             const yellowRatio = yellowRegions / sampleCount;
             const brownRatio = brownRegions / sampleCount;
@@ -175,27 +175,23 @@ async function analyzeLeafImage(imageDataUrl, fileName = '') {
             const avgGreen = totalGreen / sampleCount;
             const avgBlue = totalBlue / sampleCount;
             
-            // Calculate green dominance (key health indicator)
             const greenDominance = avgGreen / (avgRed + avgBlue + 1);
             const redExcess = avgRed / (avgGreen + 1);
             
-            // HEALTH SCORE - higher is healthier
+            // Health score (higher = healthier)
             let healthScore = 100;
-            healthScore += healthyGreenRatio * 30;  // Bonus for rich green
+            healthScore += healthyGreenRatio * 30;
             healthScore -= darkSpotRatio * 45;
             healthScore -= yellowRatio * 40;
             healthScore -= brownRatio * 55;
             healthScore -= whiteRatio * 35;
             healthScore -= speckledRatio * 30;
             healthScore -= waterSoakedRatio * 50;
-            
-            // Penalize if red/brown dominates
             if (redExcess > 0.8) healthScore -= 25;
             if (greenDominance < 0.5) healthScore -= 20;
-            
             healthScore = Math.max(0, Math.min(100, healthScore));
             
-            // Filename-based detection (priority for testing)
+            // Filename-based detection (for test images)
             const fileNameLower = fileName.toLowerCase();
             const diseaseKeywords = {
                 'bacterial_spot': 'Tomato Bacterial Spot',
@@ -213,7 +209,7 @@ async function analyzeLeafImage(imageDataUrl, fileName = '') {
             let detectedDisease = null;
             let confidence = 85;
             
-            // FIRST: Check filename
+            // 1. FILENAME OVERRIDE (for testing)
             for (const [keyword, disease] of Object.entries(diseaseKeywords)) {
                 if (fileNameLower.includes(keyword)) {
                     detectedDisease = disease;
@@ -222,67 +218,73 @@ async function analyzeLeafImage(imageDataUrl, fileName = '') {
                 }
             }
             
-            // SECOND: Image-based detection with HEALTHY as priority
+            // 2. IMAGE-BASED DETECTION (HEALTHY FIRST)
             if (!detectedDisease) {
-                // PRIORITY 1: HEALTHY LEAF DETECTION
-                // A healthy leaf has: high green dominance, low spots, low yellow, low brown
-                if (healthScore > 70 && darkSpotRatio < 0.06 && yellowRatio < 0.06 && brownRatio < 0.04 && speckledRatio < 0.04 && waterSoakedRatio < 0.04) {
+                // ---------- HEALTHY CHECK (PRIORITY 1) ----------
+                // Relaxed thresholds: allow up to 8% spots/yellowing, but still call healthy
+                const isHealthy = (
+                    healthScore > 60 &&
+                    darkSpotRatio < 0.08 &&
+                    yellowRatio < 0.08 &&
+                    brownRatio < 0.06 &&
+                    speckledRatio < 0.06 &&
+                    waterSoakedRatio < 0.06 &&
+                    greenDominance > 0.45
+                );
+                
+                if (isHealthy) {
                     detectedDisease = 'Tomato Healthy';
                     confidence = 75 + (healthScore * 0.25);
                 }
-                // PRIORITY 2: Late Blight - water-soaked lesions + brown spots
-                else if (waterSoakedRatio > 0.10 || (brownRatio > 0.12 && darkSpotRatio > 0.08 && healthScore < 45)) {
+                // ---------- LATE BLIGHT ----------
+                else if (waterSoakedRatio > 0.12 || (brownRatio > 0.14 && darkSpotRatio > 0.10 && healthScore < 45)) {
                     detectedDisease = 'Tomato Late Blight';
                     confidence = 70 + Math.min(28, (waterSoakedRatio + brownRatio) * 120);
                 }
-                // PRIORITY 3: Yellow Leaf Curl Virus - high yellowing
-                else if (yellowRatio > 0.20 && speckledRatio < 0.06 && darkSpotRatio < 0.08 && greenDominance < 0.45) {
+                // ---------- YELLOW LEAF CURL VIRUS ----------
+                else if (yellowRatio > 0.22 && speckledRatio < 0.08 && darkSpotRatio < 0.10 && greenDominance < 0.4) {
                     detectedDisease = 'Tomato Yellow Leaf Curl Virus';
                     confidence = 68 + yellowRatio * 160;
                 }
-                // PRIORITY 4: Spider Mites - speckled pattern
-                else if (speckledRatio > 0.12 || (yellowRatio > 0.10 && speckledRatio > 0.07)) {
+                // ---------- SPIDER MITES ----------
+                else if (speckledRatio > 0.14 || (yellowRatio > 0.12 && speckledRatio > 0.09)) {
                     detectedDisease = 'Tomato Spider Mites';
                     confidence = 68 + speckledRatio * 180;
                 }
-                // PRIORITY 5: Mosaic Virus - color mottling (detected via variance)
-                else if ((yellowRatio > 0.12 && darkSpotRatio < 0.07 && brownRatio < 0.06) || (yellowRatio > 0.08 && redExcess > 0.5 && redExcess < 0.9)) {
+                // ---------- MOSAIC VIRUS ----------
+                else if ((yellowRatio > 0.14 && darkSpotRatio < 0.09 && brownRatio < 0.08) || (yellowRatio > 0.10 && redExcess > 0.5 && redExcess < 0.9)) {
                     detectedDisease = 'Tomato Mosaic Virus';
                     confidence = 65 + yellowRatio * 140;
                 }
-                // PRIORITY 6: Leaf Mold - white/gray mold
-                else if (whiteRatio > 0.10) {
+                // ---------- LEAF MOLD ----------
+                else if (whiteRatio > 0.12) {
                     detectedDisease = 'Tomato Leaf Mold';
                     confidence = 65 + whiteRatio * 180;
                 }
-                // PRIORITY 7: Target Spot - concentric rings
-                else if (darkSpotRatio > 0.09 && brownRatio > 0.07 && darkSpotRatio < 0.25 && healthScore < 55) {
+                // ---------- TARGET SPOT ----------
+                else if (darkSpotRatio > 0.11 && brownRatio > 0.09 && darkSpotRatio < 0.28 && healthScore < 50) {
                     detectedDisease = 'Tomato Target Spot';
                     confidence = 68 + (darkSpotRatio + brownRatio) * 110;
                 }
-                // PRIORITY 8: Septoria Leaf Spot
-                else if (darkSpotRatio > 0.08 && darkSpotRatio < 0.20 && yellowRatio > 0.05 && brownRatio < 0.12) {
+                // ---------- SEPTORIA LEAF SPOT ----------
+                else if (darkSpotRatio > 0.10 && darkSpotRatio < 0.22 && yellowRatio > 0.07 && brownRatio < 0.14) {
                     detectedDisease = 'Tomato Septoria Leaf Spot';
                     confidence = 65 + darkSpotRatio * 160;
                 }
-                // PRIORITY 9: Bacterial Spot
-                else if (darkSpotRatio > 0.09 && yellowRatio > 0.06 && darkSpotRatio < 0.28 && redExcess < 0.9) {
+                // ---------- BACTERIAL SPOT ----------
+                else if (darkSpotRatio > 0.11 && yellowRatio > 0.08 && darkSpotRatio < 0.30 && redExcess < 0.9) {
                     detectedDisease = 'Tomato Bacterial Spot';
                     confidence = 67 + (darkSpotRatio + yellowRatio) * 110;
                 }
-                // PRIORITY 10: Early Blight
-                else if (darkSpotRatio > 0.11 && brownRatio > 0.06 && redExcess > 0.7 && healthScore < 55) {
+                // ---------- EARLY BLIGHT ----------
+                else if (darkSpotRatio > 0.13 && brownRatio > 0.08 && redExcess > 0.7 && healthScore < 50) {
                     detectedDisease = 'Tomato Early Blight';
                     confidence = 68 + darkSpotRatio * 130;
                 }
-                // FINAL FALLBACK: Healthy if nothing else matches
-                else if (healthScore > 50) {
-                    detectedDisease = 'Tomato Healthy';
-                    confidence = 70 + (healthScore * 0.2);
-                }
+                // ---------- FALLBACK: HEALTHY (if nothing else matches) ----------
                 else {
                     detectedDisease = 'Tomato Healthy';
-                    confidence = 70;
+                    confidence = 70 + (healthScore * 0.2);
                 }
             }
             
