@@ -75,7 +75,6 @@ let detectionHistory = JSON.parse(localStorage.getItem('agroai_history')) || [];
 
 function saveHistory() {
     localStorage.setItem('agroai_history', JSON.stringify(detectionHistory));
-    // Also save to current user if logged in
     const currentUser = JSON.parse(localStorage.getItem('agroai_current_user'));
     if (currentUser) {
         const userIndex = users.findIndex(u => u.username === currentUser.username);
@@ -107,13 +106,19 @@ function goPage(pageId) {
         }
     });
     
-    // Show/hide nav based on page
+    // Show/hide nav based on page - FIXED: Always show nav when logged in
     const tbNav = document.getElementById('tb-nav');
+    const currentUser = JSON.parse(localStorage.getItem('agroai_current_user'));
+    
     if (tbNav) {
-        if (pageId === 'home' || pageId === 'detect' || pageId === 'model' || pageId === 'results' || pageId === 'about') {
+        if (currentUser && (pageId === 'home' || pageId === 'detect' || pageId === 'model' || pageId === 'results' || pageId === 'about')) {
             tbNav.style.display = 'flex';
-        } else {
+        } else if (currentUser && (pageId === 'landing' || pageId === 'login' || pageId === 'signup' || pageId === 'forgot')) {
             tbNav.style.display = 'none';
+        } else if (!currentUser) {
+            tbNav.style.display = 'none';
+        } else {
+            tbNav.style.display = 'flex';
         }
     }
     
@@ -144,7 +149,6 @@ function doLogin() {
     const user = users.find(u => u.username === username && u.password === password);
     
     if (user) {
-        // Load user's history
         detectionHistory = user.history || [];
         saveHistory();
         
@@ -160,6 +164,10 @@ function doLogin() {
         document.getElementById('tb-guest').style.display = 'none';
         document.getElementById('tb-user').style.display = 'flex';
         document.getElementById('tb-username-label').textContent = username;
+        
+        // IMPORTANT: Show the navigation bar after login
+        const tbNav = document.getElementById('tb-nav');
+        if (tbNav) tbNav.style.display = 'flex';
         
         setTimeout(() => {
             goPage('home');
@@ -212,14 +220,12 @@ function doSignup() {
         return;
     }
     
-    // Create new user
     users.push({ username, email, password, history: [] });
     saveUsers();
     
     successDiv.textContent = 'Account created successfully! Please login.';
     successDiv.style.display = 'block';
     
-    // Clear form
     document.getElementById('signup-username').value = '';
     document.getElementById('signup-email').value = '';
     document.getElementById('signup-password').value = '';
@@ -236,6 +242,11 @@ function logout() {
     detectionHistory = [];
     document.getElementById('tb-guest').style.display = 'flex';
     document.getElementById('tb-user').style.display = 'none';
+    
+    // Hide navigation bar on logout
+    const tbNav = document.getElementById('tb-nav');
+    if (tbNav) tbNav.style.display = 'none';
+    
     goPage('landing');
 }
 
@@ -259,16 +270,13 @@ function doForgot() {
         return;
     }
     
-    // Check if we're in reset mode or verify mode
     if (forgotBtn.textContent === 'Verify Email') {
-        // Show password reset fields
         newPwGroup.style.display = 'block';
         confirmPwGroup.style.display = 'block';
         forgotBtn.textContent = 'Reset Password';
         successDiv.innerHTML = `Email verified! Please enter your new password.`;
         successDiv.style.display = 'block';
     } else {
-        // Reset password
         const newPassword = document.getElementById('forgot-newpw').value;
         const confirmPassword = document.getElementById('forgot-confirmpw').value;
         
@@ -296,7 +304,6 @@ function doForgot() {
         successDiv.innerHTML = 'Password reset successful! Please login with your new password.';
         successDiv.style.display = 'block';
         
-        // Reset form
         document.getElementById('forgot-email').value = '';
         document.getElementById('forgot-newpw').value = '';
         document.getElementById('forgot-confirmpw').value = '';
@@ -461,8 +468,9 @@ function navToSignup() { goPage('signup'); }
 // ========== CHECK LOGIN STATE ON LOAD ==========
 function checkLoginState() {
     const currentUser = JSON.parse(localStorage.getItem('agroai_current_user'));
+    const tbNav = document.getElementById('tb-nav');
+    
     if (currentUser) {
-        // Load user's history
         const user = users.find(u => u.username === currentUser.username);
         if (user && user.history) {
             detectionHistory = user.history;
@@ -470,9 +478,15 @@ function checkLoginState() {
         document.getElementById('tb-guest').style.display = 'none';
         document.getElementById('tb-user').style.display = 'flex';
         document.getElementById('tb-username-label').textContent = currentUser.username;
+        
+        // Show navigation bar when logged in
+        if (tbNav) tbNav.style.display = 'flex';
     } else {
         document.getElementById('tb-guest').style.display = 'flex';
         document.getElementById('tb-user').style.display = 'none';
+        
+        // Hide navigation bar when logged out
+        if (tbNav) tbNav.style.display = 'none';
     }
 }
 
@@ -494,6 +508,20 @@ window.clearImage = function() {
     if (resultOutput) resultOutput.classList.add('hidden');
     if (loadingBox) loadingBox.classList.add('hidden');
 };
+
+// ========== SETUP NAVIGATION BUTTON CLICKS ==========
+function setupNavigationButtons() {
+    // Add click handlers to topbar navigation buttons
+    const navButtons = document.querySelectorAll('.tb-btn');
+    navButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const page = btn.dataset.page;
+            if (page) {
+                goPage(page);
+            }
+        });
+    });
+}
 
 // ========== EXPOSE FUNCTIONS GLOBALLY ==========
 window.goPage = goPage;
@@ -521,6 +549,7 @@ window.togglePw = function(inputId, btn) {
 // ========== DOM CONTENT LOADED ==========
 document.addEventListener('DOMContentLoaded', () => {
     checkLoginState();
+    setupNavigationButtons(); // IMPORTANT: This adds click handlers to nav buttons
     goPage('landing');
     populateDiseaseTable();
     initModelChart();
@@ -548,7 +577,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (uploadPlaceholder) uploadPlaceholder.style.display = 'none';
                     if (clearBtn) clearBtn.style.display = 'inline-block';
                     
-                    // Simulate detection
                     if (resultPlaceholder) resultPlaceholder.style.display = 'none';
                     if (loadingBox) loadingBox.classList.remove('hidden');
                     if (resultOutput) resultOutput.classList.add('hidden');
@@ -592,7 +620,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
-        // Drag and drop
         uploadZone.addEventListener('dragover', (e) => {
             e.preventDefault();
             uploadZone.classList.add('drag-over');
@@ -626,7 +653,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Add CSS for severity badges
     const style = document.createElement('style');
     style.textContent = `
         .severity-badge {
