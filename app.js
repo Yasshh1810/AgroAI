@@ -18,7 +18,7 @@ function showToast(msg, type = 'info') {
   t._tmr = setTimeout(() => { t.style.display = 'none'; }, 3200);
 }
 
-fetch("https://your-backend.onrender.com/login",
+fetch("https://your-backend.onrender.com/login")
 
 /* ─── DISEASE DATA ─── */
 const DISEASES = [
