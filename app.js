@@ -354,22 +354,50 @@ async function runDetection(file) {
   document.getElementById('result-output').classList.add('hidden');
   document.getElementById('loading-box').classList.remove('hidden');
 
+  // 🧠 Better loading message
+  const loadingText = document.getElementById('loading-text');
+  if (loadingText) {
+    loadingText.textContent = "Analyzing image with YOLOv8...";
+    setTimeout(() => {
+      loadingText.textContent = "Waking up AI server... please wait ⏳";
+    }, 5000);
+  }
+
   try {
+    // ✅ Resize image
+    const resizedFile = await resizeImage(file);
+
     const form = new FormData();
-    form.append('file', file);
-    const res  = await fetch(`${API}/api/predict`, { method:'POST', body:form });
+    form.append('file', resizedFile, 'image.jpg');
+
+    // ✅ Use retry + timeout
+    const res = await fetchWithRetry(`${API}/api/predict`, {
+      method: 'POST',
+      body: form
+    });
+
     const data = await res.json();
-    const info   = DISEASES.find(d => d.label === data.disease) || DISEASES[9];
-    const result = { disease:info, confidence:data.confidence, severity:data.severity, annotatedUrl: data.annotated_url || null };
+
+    const info = DISEASES.find(d => d.label === data.disease) || DISEASES[9];
+
+    const result = {
+      disease: info,
+      confidence: data.confidence,
+      severity: data.severity,
+      annotatedUrl: data.annotated_url || null
+    };
+
     showResult(result);
     await saveDetection(result);
-  } catch(err) {
+
+  } catch (err) {
     document.getElementById('loading-box').classList.add('hidden');
+
     document.getElementById('result-output').innerHTML = `
       <div class="alert alert-error">
-        Cannot connect to backend. Make sure
-        <code>python start.py</code> is running and the server is on port 8000.
+        ⚠️ ${err.message}
       </div>`;
+
     document.getElementById('result-output').classList.remove('hidden');
   }
 }
