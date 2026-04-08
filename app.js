@@ -18,31 +18,7 @@ function showToast(msg, type = 'info') {
   t._tmr = setTimeout(() => { t.style.display = 'none'; }, 3200);
 }
 
-const API = 'https://agroai-backend-3bty.onrender.com';
-
-// 🔁 Fetch with retry + timeout
-async function fetchWithRetry(url, options, retries = 2, timeout = 20000) {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
-
-  try {
-    const res = await fetch(url, {
-      ...options,
-      signal: controller.signal
-    });
-    clearTimeout(id);
-    return res;
-  } catch (err) {
-    clearTimeout(id);
-    if (retries > 0) {
-      console.warn("Retrying request...");
-      await new Promise(r => setTimeout(r, 2000));
-      return fetchWithRetry(url, options, retries - 1, timeout);
-    }
-    throw new Error("Server is waking up, please try again...");
-  }
-}
-
+const API = 'http://localhost:8000';
 
 /* ─── DISEASE DATA ─── */
 const DISEASES = [
@@ -316,88 +292,28 @@ function clearImage() {
   document.getElementById('loading-box').classList.add('hidden');
 }
 
-// 🖼️ Resize image before upload
-function resizeImage(file, maxSize = 512) {
-  return new Promise(resolve => {
-    const img = new Image();
-    const reader = new FileReader();
-
-    reader.onload = e => img.src = e.target.result;
-
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      let { width, height } = img;
-
-      if (width > height && width > maxSize) {
-        height *= maxSize / width;
-        width = maxSize;
-      } else if (height > maxSize) {
-        width *= maxSize / height;
-        height = maxSize;
-      }
-
-      canvas.width = width;
-      canvas.height = height;
-      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-
-      canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.7);
-    };
-
-    reader.readAsDataURL(file);
-  });
-}
-
-
 /* ─── DETECTION ─── */
 async function runDetection(file) {
   document.getElementById('result-placeholder').classList.add('hidden');
   document.getElementById('result-output').classList.add('hidden');
   document.getElementById('loading-box').classList.remove('hidden');
 
-  // 🧠 Better loading message
-  const loadingText = document.getElementById('loading-text');
-  if (loadingText) {
-    loadingText.textContent = "Analyzing image with YOLOv8...";
-    setTimeout(() => {
-      loadingText.textContent = "Waking up AI server... please wait ⏳";
-    }, 5000);
-  }
-
   try {
-    // ✅ Resize image
-    const resizedFile = await resizeImage(file);
-
     const form = new FormData();
-    form.append('file', resizedFile, 'image.jpg');
-
-    // ✅ Use retry + timeout
-    const res = await fetchWithRetry(`${API}/api/predict`, {
-      method: 'POST',
-      body: form
-    });
-
+    form.append('file', file);
+    const res  = await fetch(`${API}/api/predict`, { method:'POST', body:form });
     const data = await res.json();
-
-    const info = DISEASES.find(d => d.label === data.disease) || DISEASES[9];
-
-    const result = {
-      disease: info,
-      confidence: data.confidence,
-      severity: data.severity,
-      annotatedUrl: data.annotated_url || null
-    };
-
+    const info   = DISEASES.find(d => d.label === data.disease) || DISEASES[9];
+    const result = { disease:info, confidence:data.confidence, severity:data.severity, annotatedUrl: data.annotated_url || null };
     showResult(result);
     await saveDetection(result);
-
-  } catch (err) {
+  } catch(err) {
     document.getElementById('loading-box').classList.add('hidden');
-
     document.getElementById('result-output').innerHTML = `
       <div class="alert alert-error">
-        ⚠️ ${err.message}
+        Cannot connect to backend. Make sure
+        <code>python start.py</code> is running and the server is on port 8000.
       </div>`;
-
     document.getElementById('result-output').classList.remove('hidden');
   }
 }
