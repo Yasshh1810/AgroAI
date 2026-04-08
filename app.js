@@ -18,7 +18,7 @@ function showToast(msg, type = 'info') {
   t._tmr = setTimeout(() => { t.style.display = 'none'; }, 3200);
 }
 
-const API = 'http://localhost:8000';
+const API = 'https://agroai-backend-oe2k.onrender.com';
 
 /* ─── DISEASE DATA ─── */
 const DISEASES = [
