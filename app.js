@@ -311,8 +311,7 @@ async function runDetection(file) {
     document.getElementById('loading-box').classList.add('hidden');
     document.getElementById('result-output').innerHTML = `
       <div class="alert alert-error">
-        Cannot connect to backend. Make sure
-        <code>python start.py</code> is running and the server is on port 8000.
+        Cannot connect to backend. Please check your internet or backend deployment.
       </div>`;
     document.getElementById('result-output').classList.remove('hidden');
   }
