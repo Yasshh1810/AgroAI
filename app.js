@@ -680,7 +680,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (loadingBox) loadingBox.classList.remove('hidden');
                     if (resultOutput) resultOutput.classList.add('hidden');
                     
-                    const result = await analyzeLeafImage(imageDataUrl, fileName);
+                    let result;
+
+try {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch("https://agroai-backend-oe2k.onrender.com/api/predict", {
+        method: "POST",
+        body: formData
+    });
+
+    result = await response.json();
+
+    result.confidence = (result.confidence * 100).toFixed(1);
+
+} catch (error) {
+    console.error("API Error:", error);
+    showToast("❌ Backend connection failed", "error");
+    return;
+}
                     
                     if (loadingBox) loadingBox.classList.add('hidden');
                     if (resultOutput) {
