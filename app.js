@@ -301,8 +301,13 @@ async function runDetection(file) {
   try {
     const form = new FormData();
     form.append('file', file);
-    const res  = await fetch(`${API}/api/predict`, { method:'POST', body:form });
-    const data = await res.json();
+    const res = await fetch(`${API}/api/predict`, { method:'POST', body:form });
+
+if (!res.ok) {
+  throw new Error("Prediction failed");
+}
+
+const data = await res.json();
     const info   = DISEASES.find(d => d.label === data.disease) || DISEASES[9];
     const result = { disease:info, confidence:data.confidence, severity:data.severity, annotatedUrl: data.annotated_url || null };
     showResult(result);
