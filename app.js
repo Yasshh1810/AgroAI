@@ -20,6 +20,30 @@ function showToast(msg, type = 'info') {
 
 const API = 'https://agroai-backend-u2j9.onrender.com';
 
+// 🔁 Fetch with retry + timeout
+async function fetchWithRetry(url, options, retries = 2, timeout = 20000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const res = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(id);
+    return res;
+  } catch (err) {
+    clearTimeout(id);
+    if (retries > 0) {
+      console.warn("Retrying request...");
+      await new Promise(r => setTimeout(r, 2000));
+      return fetchWithRetry(url, options, retries - 1, timeout);
+    }
+    throw new Error("Server is waking up, please try again...");
+  }
+}
+
+
 /* ─── DISEASE DATA ─── */
 const DISEASES = [
   { key:'Tomato_Bacterial_spot',     label:'Bacterial Spot',         severity:'High',
