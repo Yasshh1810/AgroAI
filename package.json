@@ -1,0 +1,11 @@
+{
+  "name": "agroai-frontend",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "echo 'Building static site...'",
+    "vercel-build": "echo 'Building for Vercel...'"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
