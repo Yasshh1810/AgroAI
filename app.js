@@ -3,8 +3,23 @@
    ══════════════════════════════════════════ */
 'use strict';
 
-// API Configuration - Change this to your Render backend URL
-const API = 'https://agroai-backend-mxn8.onrender.com';
+/* ─── API Configuration ─── */
+// Get API URL from environment or config
+let API = 'https://agroai-backend-mxn8.onrender.com';
+
+// Check for Vercel environment variable (client-side)
+if (typeof window !== 'undefined') {
+    // Check for injected config
+    if (window.APP_CONFIG && window.APP_CONFIG.API_URL) {
+        API = window.APP_CONFIG.API_URL;
+    }
+    // Check for Vercel's public env (if using Next.js or similar)
+    if (process.env.NEXT_PUBLIC_API_URL) {
+        API = process.env.NEXT_PUBLIC_API_URL;
+    }
+}
+
+console.log('API URL:', API); // For debugging
 
 /* ─── TOAST ─── */
 function showToast(msg, type = 'info') {
@@ -20,6 +35,15 @@ function showToast(msg, type = 'info') {
   clearTimeout(t._tmr);
   t._tmr = setTimeout(() => { t.style.display = 'none'; }, 3200);
 }
+
+// Rest of your app.js code remains the same...
+// (All other functions stay exactly as in the previous version)
+
+/* ─── INIT ─── */
+renderDiseaseTable();
+updateTopbar();
+if (currentUser) { goPage('home'); }
+else { goPage('login'); }
 
 /* ─── DISEASE DATA ─── */
 const DISEASES = [
