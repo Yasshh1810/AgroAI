@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════
-   AGROAI — app.js (Production Ready with CORS Fix)
+   AGROAI — app.js (Fully Working with CORS)
    ══════════════════════════════════════════ */
 'use strict';
 
@@ -10,11 +10,6 @@ const BACKUP_API = 'http://localhost:8000';
 // Auto-detect environment
 if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
     API = BACKUP_API;
-}
-
-// Check for Vercel environment variable
-if (typeof window !== 'undefined' && window.APP_CONFIG && window.APP_CONFIG.API_URL) {
-    API = window.APP_CONFIG.API_URL;
 }
 
 console.log('🌐 API URL:', API);
@@ -47,6 +42,7 @@ async function checkAPIHealth() {
     try {
         const res = await fetch(`${API}/api/health`, { 
             method: 'GET',
+            mode: 'cors',
             signal: AbortSignal.timeout(5000)
         });
         if (res.ok) {
@@ -235,7 +231,6 @@ async function doSignup() {
         
         if (!res.ok) throw new Error(data.detail || 'Signup failed.');
         
-        // Store token if returned
         if (data.access_token) {
             sessionStorage.setItem('agroai_token', data.access_token);
         }
@@ -296,7 +291,6 @@ async function doLogin() {
         
         if (!res.ok) throw new Error(data.detail || 'Invalid username or password.');
         
-        // Store token
         if (data.access_token) {
             sessionStorage.setItem('agroai_token', data.access_token);
         }
@@ -304,7 +298,6 @@ async function doLogin() {
         setUser({ username: data.username, email: data.email });
         updateTopbar();
         
-        // Clear form
         const usernameInput = document.getElementById('login-username');
         const passwordInput = document.getElementById('login-password');
         if (usernameInput) usernameInput.value = '';
@@ -329,7 +322,6 @@ function showAlert(el, msg) {
     }
 }
 
-// Enter key support
 document.getElementById('login-password')?.addEventListener('keydown', e => {
     if (e.key === 'Enter') doLogin();
 });
@@ -555,17 +547,20 @@ async function runDetection(file) {
         const form = new FormData();
         form.append('file', file);
         
-        // Add username if logged in
         if (currentUser) {
             form.append('username', currentUser.username);
         }
         
         const res = await fetch(`${API}/api/predict`, { 
             method: 'POST', 
+            mode: 'cors',
             body: form 
         });
         
-        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(`HTTP ${res.status}: ${errorText}`);
+        }
         
         const data = await res.json();
         const info = DISEASES.find(d => d.label === data.disease) || DISEASES[9];
@@ -586,7 +581,7 @@ async function runDetection(file) {
                 <div class="alert alert-error">
                     <strong>⚠️ Unable to analyze image</strong><br>
                     ${err.message}<br><br>
-                    <small>Please check if the backend server is running.</small>
+                    <small>Please try again or contact support.</small>
                 </div>`;
             resultOutput.classList.remove('hidden');
         }
@@ -627,7 +622,6 @@ function showResult({ disease, confidence, severity, annotatedUrl }) {
         `;
         resultOutput.classList.remove('hidden');
         
-        // Animate confidence bar
         setTimeout(() => {
             const bar = document.getElementById('conf-bar');
             if (bar) bar.style.width = pct + '%';
@@ -835,11 +829,8 @@ function initPerfBars() {
 /* ─── INITIALIZATION ─── */
 renderDiseaseTable();
 updateTopbar();
-
-// Check API health on startup
 checkAPIHealth();
 
-// Set initial page
 if (currentUser) {
     goPage('home');
 } else {
