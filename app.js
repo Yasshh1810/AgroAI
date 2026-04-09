@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════
-   AGROAI — app.js (Production Ready)
+   AGROAI — app.js (Production Ready - FIXED)
    ══════════════════════════════════════════ */
 'use strict';
 
@@ -12,10 +12,6 @@ if (typeof window !== 'undefined') {
     // Check for injected config
     if (window.APP_CONFIG && window.APP_CONFIG.API_URL) {
         API = window.APP_CONFIG.API_URL;
-    }
-    // Check for Vercel's public env (if using Next.js or similar)
-    if (process.env.NEXT_PUBLIC_API_URL) {
-        API = process.env.NEXT_PUBLIC_API_URL;
     }
 }
 
@@ -35,15 +31,6 @@ function showToast(msg, type = 'info') {
   clearTimeout(t._tmr);
   t._tmr = setTimeout(() => { t.style.display = 'none'; }, 3200);
 }
-
-// Rest of your app.js code remains the same...
-// (All other functions stay exactly as in the previous version)
-
-/* ─── INIT ─── */
-renderDiseaseTable();
-updateTopbar();
-if (currentUser) { goPage('home'); }
-else { goPage('login'); }
 
 /* ─── DISEASE DATA ─── */
 const DISEASES = [
@@ -135,14 +122,14 @@ function updateTopbar() {
   const user  = document.getElementById('tb-user');
   const label = document.getElementById('tb-username-label');
   if (currentUser) {
-    nav.style.display   = 'flex';
-    guest.style.display = 'none';
-    user.style.display  = 'flex';
-    label.textContent   = currentUser.username;
+    if (nav) nav.style.display = 'flex';
+    if (guest) guest.style.display = 'none';
+    if (user) user.style.display = 'flex';
+    if (label) label.textContent = currentUser.username;
   } else {
-    nav.style.display   = 'none';
-    guest.style.display = 'flex';
-    user.style.display  = 'none';
+    if (nav) nav.style.display = 'none';
+    if (guest) guest.style.display = 'flex';
+    if (user) user.style.display = 'none';
   }
 }
 
@@ -165,8 +152,8 @@ async function doSignup() {
   const okBox    = document.getElementById('signup-success');
   const btn      = document.getElementById('signup-btn');
 
-  errBox.style.display = 'none';
-  okBox.style.display  = 'none';
+  if (errBox) errBox.style.display = 'none';
+  if (okBox) okBox.style.display = 'none';
 
   if (!username || !email || !password || !confirm) { showAlert(errBox,'Please fill in all fields.'); return; }
   if (password !== confirm) { showAlert(errBox,'Passwords do not match.'); return; }
@@ -187,11 +174,15 @@ async function doSignup() {
 }
 
 function clearSignupForm() {
-  ['signup-username','signup-email','signup-password','signup-confirm'].forEach(id => {
-    document.getElementById(id).value = '';
+  const fields = ['signup-username','signup-email','signup-password','signup-confirm'];
+  fields.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
   });
-  document.getElementById('signup-error').style.display   = 'none';
-  document.getElementById('signup-success').style.display = 'none';
+  const errorEl = document.getElementById('signup-error');
+  const successEl = document.getElementById('signup-success');
+  if (errorEl) errorEl.style.display = 'none';
+  if (successEl) successEl.style.display = 'none';
 }
 
 /* ─── LOGIN ─── */
@@ -206,7 +197,7 @@ async function doLogin() {
   const okBox    = document.getElementById('login-success');
   const btn      = document.getElementById('login-btn');
 
-  errBox.style.display = 'none';
+  if (errBox) errBox.style.display = 'none';
   if (okBox) okBox.style.display = 'none';
 
   if (!username || !password) { showAlert(errBox,'Please enter your username and password.'); return; }
@@ -221,15 +212,22 @@ async function doLogin() {
     if (!res.ok) throw new Error(data.detail || 'Invalid username or password.');
     setUser({ username: data.username, email: data.email });
     updateTopbar();
-    document.getElementById('login-username').value = '';
-    document.getElementById('login-password').value = '';
-    errBox.style.display = 'none';
+    const usernameInput = document.getElementById('login-username');
+    const passwordInput = document.getElementById('login-password');
+    if (usernameInput) usernameInput.value = '';
+    if (passwordInput) passwordInput.value = '';
+    if (errBox) errBox.style.display = 'none';
     goPage('home');
   } catch(err) { showAlert(errBox, err.message); }
   finally { _loginBusy = false; btn.disabled = false; btn.textContent = 'Sign In'; }
 }
 
-function showAlert(el, msg) { el.textContent = msg; el.style.display = 'block'; }
+function showAlert(el, msg) { 
+  if (el) {
+    el.textContent = msg; 
+    el.style.display = 'block'; 
+  }
+}
 
 /* ─── ENTER KEY LOGIN ─── */
 const loginPassword = document.getElementById('login-password');
@@ -262,26 +260,34 @@ const browseBtn = document.getElementById('browse-btn');
 if (browseBtn) {
   browseBtn.addEventListener('click', e => {
     e.stopPropagation();
-    fileInput.click();
+    if (fileInput) fileInput.click();
   });
 }
 
 if (uploadZone) {
   uploadZone.addEventListener('click', e => {
     if (browseBtn && browseBtn.contains(e.target)) return;
-    fileInput.click();
+    if (fileInput) fileInput.click();
   });
 }
 
 if (fileInput) {
-  fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+  fileInput.addEventListener('change', e => { 
+    if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]); 
+  });
 }
 
 if (uploadZone) {
-  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
-  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+  uploadZone.addEventListener('dragover', e => { 
+    e.preventDefault(); 
+    uploadZone.classList.add('drag-over'); 
+  });
+  uploadZone.addEventListener('dragleave', () => { 
+    if (uploadZone) uploadZone.classList.remove('drag-over'); 
+  });
   uploadZone.addEventListener('drop', e => {
-    e.preventDefault(); uploadZone.classList.remove('drag-over');
+    e.preventDefault(); 
+    if (uploadZone) uploadZone.classList.remove('drag-over');
     const file = e.dataTransfer.files[0];
     if (file && file.type.startsWith('image/')) handleFile(file);
   });
@@ -293,7 +299,7 @@ function handleFile(file) {
   _currentFile = file;
   const reader = new FileReader();
   reader.onload = e => {
-    previewImg.src = e.target.result;
+    if (previewImg) previewImg.src = e.target.result;
     if (placeholder) placeholder.classList.add('hidden');
     if (previewImg) previewImg.classList.remove('hidden');
     if (clearBtn) clearBtn.style.display = 'block';
@@ -305,7 +311,7 @@ function handleFile(file) {
 function clearImage() {
   if (fileInput) fileInput.value = '';
   if (previewImg) previewImg.src = '';
-  _currentFile    = null;
+  _currentFile = null;
   if (previewImg) previewImg.classList.add('hidden');
   if (placeholder) placeholder.classList.remove('hidden');
   if (clearBtn) clearBtn.style.display = 'none';
@@ -418,10 +424,16 @@ async function loadHistory() {
 
 function renderHistory(rows) {
   const tbody = document.getElementById('history-body');
-  ['m-total','m-diseased','m-healthy','m-avg'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = id === 'm-avg' ? '—' : '0';
-  });
+  const totalEl = document.getElementById('m-total');
+  const diseasedEl = document.getElementById('m-diseased');
+  const healthyEl = document.getElementById('m-healthy');
+  const avgEl = document.getElementById('m-avg');
+  
+  if (totalEl) totalEl.textContent = '0';
+  if (diseasedEl) diseasedEl.textContent = '0';
+  if (healthyEl) healthyEl.textContent = '0';
+  if (avgEl) avgEl.textContent = '—';
+  
   if (!tbody) return;
   
   if (!rows.length) {
@@ -432,11 +444,6 @@ function renderHistory(rows) {
   const healthy  = rows.filter(r => r.disease === 'Healthy').length;
   const diseased = total - healthy;
   const avg      = rows.reduce((s,r) => s + r.confidence, 0) / total;
-  
-  const totalEl = document.getElementById('m-total');
-  const diseasedEl = document.getElementById('m-diseased');
-  const healthyEl = document.getElementById('m-healthy');
-  const avgEl = document.getElementById('m-avg');
   
   if (totalEl) totalEl.textContent = total;
   if (diseasedEl) diseasedEl.textContent = diseased;
@@ -490,12 +497,12 @@ function initModelChart() {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y}%` } }
+        tooltip: { callbacks: { label: function(ctx) { return ' ' + ctx.parsed.y + '%'; } } }
       },
       scales: {
         y: {
           min: 60, max: 100,
-          ticks: { callback: v => v + '%', font: { family:'Poppins', size:11 }, color:'#94a3b8' },
+          ticks: { callback: function(v) { return v + '%'; }, font: { family:'Poppins', size:11 }, color:'#94a3b8' },
           grid: { color:'rgba(0,0,0,0.05)' },
         },
         x: {
@@ -507,4 +514,99 @@ function initModelChart() {
   });
 }
 
-/* ─
+/* ─── PERF BARS ─── */
+function initPerfBars() {
+  const wrap = document.getElementById('perf-bars');
+  if (!wrap || wrap.dataset.loaded) return;
+  wrap.innerHTML = CLASS_PERF.map(([name, prec, rec]) => `
+    <div class="perf-row">
+      <div class="perf-head">
+        <span class="perf-name">${name}</span>
+        <span class="perf-vals">Precision ${prec}% &middot; Recall ${rec}%</span>
+      </div>
+      <div class="perf-bg">
+        <div class="perf-fill" data-width="${((prec+rec)/2).toFixed(1)}"></div>
+      </div>
+    </div>
+  `).join('');
+  wrap.dataset.loaded = 'true';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    wrap.querySelectorAll('.perf-fill').forEach(b => { b.style.width = b.dataset.width + '%'; });
+  }));
+}
+
+/* ─── FORGOT PASSWORD ─── */
+let _forgotStep  = 1;
+let _forgotEmail = '';
+
+function resetForgotForm() {
+  _forgotStep = 1; _forgotEmail = '';
+  const fe = document.getElementById('forgot-email');
+  if (fe) { fe.value = ''; fe.disabled = false; }
+  const np = document.getElementById('forgot-newpw');     if (np) np.value = '';
+  const cp = document.getElementById('forgot-confirmpw'); if (cp) cp.value = '';
+  const eg = document.getElementById('forgot-error');     if (eg) eg.style.display = 'none';
+  const og = document.getElementById('forgot-success');   if (og) og.style.display = 'none';
+  const ng = document.getElementById('new-pw-group');     if (ng) ng.style.display = 'none';
+  const cg = document.getElementById('confirm-pw-group'); if (cg) cg.style.display = 'none';
+  const btn = document.getElementById('forgot-btn');      if (btn) btn.textContent = 'Verify Email';
+}
+
+async function doForgot() {
+  const errBox = document.getElementById('forgot-error');
+  const okBox  = document.getElementById('forgot-success');
+  const btn    = document.getElementById('forgot-btn');
+  if (errBox) errBox.style.display = 'none';
+  if (okBox) okBox.style.display = 'none';
+
+  if (_forgotStep === 1) {
+    const email = document.getElementById('forgot-email').value.trim();
+    if (!email || !email.includes('@')) { showAlert(errBox,'Please enter a valid email.'); return; }
+    if (btn) btn.disabled = true; 
+    if (btn) btn.textContent = 'Verifying...';
+    try {
+      const res  = await fetch(`${API}/api/verify-email`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Email not found.');
+      _forgotEmail = email; _forgotStep = 2;
+      showAlert(okBox, 'Email verified. Please enter your new password.');
+      const newPwGroup = document.getElementById('new-pw-group');
+      const confirmPwGroup = document.getElementById('confirm-pw-group');
+      const forgotEmail = document.getElementById('forgot-email');
+      if (newPwGroup) newPwGroup.style.display = 'block';
+      if (confirmPwGroup) confirmPwGroup.style.display = 'block';
+      if (forgotEmail) forgotEmail.disabled = true;
+      if (btn) btn.textContent = 'Reset Password';
+    } catch(err) { showAlert(errBox, err.message); }
+    finally { if (btn) btn.disabled = false; if (_forgotStep === 1 && btn) btn.textContent = 'Verify Email'; }
+
+  } else {
+    const np = document.getElementById('forgot-newpw').value;
+    const cp = document.getElementById('forgot-confirmpw').value;
+    if (!np || !cp)  { showAlert(errBox,'Please fill both password fields.'); return; }
+    if (np !== cp)   { showAlert(errBox,'Passwords do not match.'); return; }
+    if (np.length<6) { showAlert(errBox,'Password must be at least 6 characters.'); return; }
+    if (btn) btn.disabled = true; 
+    if (btn) btn.textContent = 'Resetting...';
+    try {
+      const res  = await fetch(`${API}/api/reset-password`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ email: _forgotEmail, new_password: np }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Reset failed.');
+      showAlert(okBox,'Password reset successfully! Redirecting to login...');
+      setTimeout(() => { resetForgotForm(); goPage('login'); }, 2000);
+    } catch(err) { showAlert(errBox, err.message); }
+    finally { if (btn) btn.disabled = false; if (_forgotStep === 2 && btn) btn.textContent = 'Reset Password'; }
+  }
+}
+
+/* ─── INIT ─── */
+renderDiseaseTable();
+updateTopbar();
+if (currentUser) { goPage('home'); }
+else { goPage('login'); }
