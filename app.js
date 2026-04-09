@@ -1,12 +1,11 @@
 /* ══════════════════════════════════════════
-   AGROAI — app.js (Production Ready)
+   AGROAI — app.js (Production Ready with CORS Fix)
    ══════════════════════════════════════════ */
 'use strict';
 
 /* ─── API Configuration ─── */
-// Try multiple possible API URLs
 let API = 'https://agroai-backend-mxn8.onrender.com';
-const BACKUP_API = 'http://localhost:8000'; // For local development
+const BACKUP_API = 'http://localhost:8000';
 
 // Auto-detect environment
 if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
@@ -59,7 +58,6 @@ async function checkAPIHealth() {
         console.warn('⚠️ API health check failed:', err.message);
     }
     
-    // Show warning but don't block the app
     showToast('Backend connection issue. Some features may be limited.', 'warning');
     return false;
 }
@@ -132,7 +130,13 @@ function setUser(u) {
 
 function clearUser() { 
     currentUser = null; 
-    sessionStorage.removeItem('agroai_user'); 
+    sessionStorage.removeItem('agroai_user');
+    sessionStorage.removeItem('agroai_token');
+}
+
+function getAuthHeaders() {
+    const token = sessionStorage.getItem('agroai_token');
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
 }
 
 /* ─── NAVIGATION ─── */
@@ -231,6 +235,11 @@ async function doSignup() {
         
         if (!res.ok) throw new Error(data.detail || 'Signup failed.');
         
+        // Store token if returned
+        if (data.access_token) {
+            sessionStorage.setItem('agroai_token', data.access_token);
+        }
+        
         showAlert(okBox, 'Account created! Redirecting to login...');
         setTimeout(() => {
             clearSignupForm();
@@ -286,6 +295,11 @@ async function doLogin() {
         const data = await res.json();
         
         if (!res.ok) throw new Error(data.detail || 'Invalid username or password.');
+        
+        // Store token
+        if (data.access_token) {
+            sessionStorage.setItem('agroai_token', data.access_token);
+        }
         
         setUser({ username: data.username, email: data.email });
         updateTopbar();
@@ -541,6 +555,11 @@ async function runDetection(file) {
         const form = new FormData();
         form.append('file', file);
         
+        // Add username if logged in
+        if (currentUser) {
+            form.append('username', currentUser.username);
+        }
+        
         const res = await fetch(`${API}/api/predict`, { 
             method: 'POST', 
             body: form 
@@ -621,11 +640,15 @@ async function saveDetection({ disease, confidence, severity }) {
     if (!currentUser) return;
     
     try {
+        const headers = {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
+        };
+        
         await fetch(`${API}/api/save-detection`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: headers,
             body: JSON.stringify({
-                username: currentUser.username,
                 disease: disease.label,
                 confidence: confidence,
                 severity: severity || disease.severity,
@@ -641,7 +664,18 @@ async function loadHistory() {
     if (!currentUser) return;
     
     try {
-        const res = await fetch(`${API}/api/history/${currentUser.username}`);
+        const headers = getAuthHeaders();
+        const res = await fetch(`${API}/api/history`, { headers });
+        
+        if (!res.ok) {
+            if (res.status === 401) {
+                clearUser();
+                goPage('login');
+                throw new Error('Session expired');
+            }
+            throw new Error('Failed to load history');
+        }
+        
         const data = await res.json();
         renderHistory(data.history || []);
     } catch (err) {
@@ -694,7 +728,8 @@ async function clearHistory() {
     if (!confirm('Clear all your detection history?')) return;
     
     try {
-        await fetch(`${API}/api/history/${currentUser.username}`, { method: 'DELETE' });
+        const headers = getAuthHeaders();
+        await fetch(`${API}/api/history`, { method: 'DELETE', headers });
         renderHistory([]);
         showToast('History cleared successfully', 'success');
     } catch (err) {
